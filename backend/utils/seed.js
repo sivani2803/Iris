@@ -6,6 +6,7 @@ const FamilyCheckIn = require('../models/FamilyCheckIn');
 const User = require('../models/User');
 const Device = require('../models/Device');
 const Consent = require('../models/Consent');
+const FamilyRelationship = require('../models/FamilyRelationship');
 
 async function seedInitialData() {
   try {
@@ -169,6 +170,24 @@ async function seedInitialData() {
         { name: 'Admin Coordinator', email: 'admin@iris.care', passwordHash: defaultPasswordHash, role: 'admin', seniorId: 'S102', phone: '+91 98000 00000', status: 'ACTIVE', emailVerified: true, onboardingCompleted: true, isActive: true }
       ]);
       console.log('[IRIS Seed] Seeded Demo Users with Bcrypt Hashes (Password123!) & ACTIVE status');
+    }
+
+    // Seed Family Relationship for Demo Family User (Rohan Sharma <-> S102)
+    const familyUser = await User.findOne({ email: 'family@iris.care' });
+    if (familyUser) {
+      const existingRel = await FamilyRelationship.findOne({ familyUserId: familyUser._id, seniorId: 'S102' });
+      if (!existingRel) {
+        await FamilyRelationship.create({
+          familyUserId: familyUser._id,
+          seniorId: 'S102',
+          relationship: 'Son',
+          accessLevel: 'FULL_CARE',
+          status: 'APPROVED',
+          inviteCode: 'IRIS-S102',
+          approvedAt: new Date()
+        });
+        console.log('[IRIS Seed] Seeded Approved FamilyRelationship for Rohan Sharma -> S102');
+      }
     }
 
     // 7. Seed Registered Smartwatch Device (Section 8 / Phase 4)

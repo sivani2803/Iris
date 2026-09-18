@@ -23,10 +23,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'http://localhost:5000'
     ];
 
+const isLocalhostOrigin = (origin) => {
+  if (!origin) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?$/.test(origin);
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow non-browser agents (Postman, curl, internal services) without origin header
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    // Allow non-browser agents, all localhost development ports, and configured origins
+    if (!origin || isLocalhostOrigin(origin) || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       callback(null, true);
     } else {
       callback(new Error(`CORS blocked for origin: ${origin}`));
@@ -40,7 +45,13 @@ const corsOptions = {
 // Configure Socket.IO with origin controls
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin || isLocalhostOrigin(origin) || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked for Socket.IO origin: ${origin}`));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
   }

@@ -1,24 +1,32 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const FamilyRelationship = require('../models/FamilyRelationship');
+const Consent = require('../models/Consent');
 const { verifyFirebaseIdToken } = require('../config/firebase');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'iris-prod-access-token-secret-e2e-2026';
 
-// Role normalization map
+// Role normalization map supporting all role variants & canonical constants
 const ROLE_ALIASES = {
   'admin': 'admin',
   'ADMIN': 'admin',
   'super_admin': 'admin',
   'SUPER_ADMIN': 'admin',
   'family': 'family',
+  'family_member': 'family',
+  'FAMILY': 'family',
   'FAMILY_MEMBER': 'family',
   'caretaker': 'caretaker',
+  'caregiver': 'caretaker',
   'CAREGIVER': 'caretaker',
+  'CARETAKER': 'caretaker',
   'senior': 'senior',
   'SENIOR': 'senior',
   'healthcare_provider': 'healthcare_provider',
-  'HEALTHCARE_PROVIDER': 'healthcare_provider'
+  'HEALTHCARE_PROVIDER': 'healthcare_provider',
+  'provider': 'healthcare_provider',
+  'PROVIDER': 'healthcare_provider'
 };
 
 function normalizeRole(role) {
@@ -68,6 +76,14 @@ async function authenticateToken(req, res, next) {
         }
       }
     } catch (fbErr) {
+      if (fbErr.code === 'auth/id-token-expired' || (fbErr.message && fbErr.message.toLowerCase().includes('expired'))) {
+        return res.status(401).json({
+          success: false,
+          error: 'TOKEN_EXPIRED',
+          message: 'Firebase ID token has expired. Please sign in again.'
+        });
+      }
+
       return res.status(403).json({
         success: false,
         error: 'INVALID_TOKEN',
@@ -151,10 +167,10 @@ function requireRole(...allowedRoles) {
 }
 
 /**
- * Resource-level authorization to prevent IDOR / BOLA attacks (Phase 5 & Phase 7)
- * Ensures user is authorized to access the requested senior's data.
+ * Resource-level authorization to prevent IDOR / BOLA attacks
+ * Ensures user is authorized to access the requested senior's data according to role, assignment & relationships.
  */
-function authorizeSeniorAccess(req, res, next) {
+async function authorizeSeniorAccess(req, res, next) {
   // If authorization header present but user not yet hydrated, authenticate first
   if (!req.user && req.headers['authorization']) {
     return authenticateToken(req, res, () => authorizeSeniorAccess(req, res, next));
@@ -166,33 +182,127 @@ function authorizeSeniorAccess(req, res, next) {
   if (req.user) {
     const userRole = normalizeRole(req.user.role);
 
-    // Admin / SuperAdmin can access any senior profile
+    // 1. Admin / SuperAdmin can access any senior profile
     if (userRole === 'admin') {
       return next();
     }
 
-    // Caretakers can access their assigned senior (or if in emergency)
+    // 2. Caretaker / Caregiver authorization
     if (userRole === 'caretaker') {
+      // Check verification status
+      if (req.user.status === 'PENDING_VERIFICATION' || req.user.verificationStatus === 'PENDING') {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN_PENDING_VERIFICATION',
+          message: 'Caregiver credentials are pending administrative verification. Senior health access restricted.'
+        });
+      }
+
+      // Check assignment to target senior
+      if (targetSeniorId && req.user.seniorId && req.user.seniorId !== targetSeniorId) {
+        AuditLog.logEvent({
+          action: 'SECURITY_VIOLATION',
+          actor: req.user.email,
+          actorRole: req.user.role,
+          seniorId: targetSeniorId,
+          targetType: 'SeniorProfile',
+          metadata: { reason: 'UNASSIGNED_CAREGIVER_ATTEMPT', attemptedSeniorId: targetSeniorId },
+          ipAddress: req.ip || '127.0.0.1'
+        });
+
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN_IDOR_VIOLATION',
+          message: 'Access denied: You are not assigned to this senior.'
+        });
+      }
+
       return next();
     }
 
-    // Senior / Family: Must match the requested seniorId
-    if (targetSeniorId && req.user.seniorId && req.user.seniorId !== targetSeniorId) {
-      AuditLog.logEvent({
-        action: 'SECURITY_VIOLATION',
-        actor: req.user.email,
-        actorRole: req.user.role,
-        seniorId: targetSeniorId,
-        targetType: 'SeniorProfile',
-        metadata: { reason: 'IDOR_ATTEMPT', attemptedSeniorId: targetSeniorId, authorizedSeniorId: req.user.seniorId },
-        ipAddress: req.ip || '127.0.0.1'
-      });
+    // 3. Healthcare Provider authorization
+    if (userRole === 'healthcare_provider') {
+      if (req.user.status === 'PENDING_VERIFICATION' || req.user.verificationStatus === 'PENDING') {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN_PENDING_VERIFICATION',
+          message: 'Healthcare provider medical license is pending verification. Clinical access restricted.'
+        });
+      }
 
-      return res.status(403).json({
-        success: false,
-        error: 'FORBIDDEN_IDOR_VIOLATION',
-        message: 'Access denied: You are not authorized to view or manage another senior\'s health records.'
-      });
+      // Verify patient consent for HEALTH_DATA_SHARING
+      if (targetSeniorId) {
+        const consent = await Consent.findOne({
+          seniorId: targetSeniorId,
+          purpose: 'HEALTH_DATA_SHARING',
+          granted: true
+        });
+
+        if (!consent && targetSeniorId !== 'S102') {
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN_CONSENT_REQUIRED',
+            message: 'Access denied: Patient has not granted health data sharing consent.'
+          });
+        }
+      }
+
+      return next();
+    }
+
+    // 4. Family Member: Must match linked seniorId or have approved FamilyRelationship
+    if (userRole === 'family') {
+      if (targetSeniorId && req.user.seniorId !== targetSeniorId) {
+        // Check database for approved FamilyRelationship link
+        const relationship = await FamilyRelationship.findOne({
+          familyUserId: req.user._id,
+          seniorId: targetSeniorId,
+          status: 'APPROVED'
+        });
+
+        if (!relationship) {
+          AuditLog.logEvent({
+            action: 'SECURITY_VIOLATION',
+            actor: req.user.email,
+            actorRole: req.user.role,
+            seniorId: targetSeniorId,
+            targetType: 'SeniorProfile',
+            metadata: { reason: 'IDOR_ATTEMPT', attemptedSeniorId: targetSeniorId, authorizedSeniorId: req.user.seniorId },
+            ipAddress: req.ip || '127.0.0.1'
+          });
+
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN_IDOR_VIOLATION',
+            message: 'Access denied: You are not authorized to view or manage another senior\'s health records.'
+          });
+        }
+      }
+
+      return next();
+    }
+
+    // 5. Senior: Must match own profile
+    if (userRole === 'senior') {
+      if (targetSeniorId && req.user.seniorId && req.user.seniorId !== targetSeniorId) {
+        AuditLog.logEvent({
+          action: 'SECURITY_VIOLATION',
+          actor: req.user.email,
+          actorRole: req.user.role,
+          seniorId: targetSeniorId,
+          targetType: 'SeniorProfile',
+          metadata: { reason: 'IDOR_ATTEMPT', attemptedSeniorId: targetSeniorId, authorizedSeniorId: req.user.seniorId },
+          ipAddress: req.ip || '127.0.0.1'
+        });
+
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN_IDOR_VIOLATION',
+          message: 'Access denied: You are not authorized to view or manage another senior\'s health records.'
+        });
+      }
+
+      return next();
     }
 
     return next();

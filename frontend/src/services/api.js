@@ -8,6 +8,15 @@ const api = axios.create({
   timeout: 10000,
 });
 
+// Attach Authorization header if token exists in localStorage
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('iris_jwt_token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Offline queue for health events
 const QUEUE_KEY = 'iris_offline_health_events';
 

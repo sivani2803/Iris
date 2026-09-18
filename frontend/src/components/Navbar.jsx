@@ -1,29 +1,73 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEmergency } from '../context/EmergencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Shield, Watch, Users, HeartHandshake, UserCheck, PlayCircle, Globe, AlertCircle, Sparkles, Pill, Calendar } from 'lucide-react';
+import {
+  Shield,
+  Watch,
+  Users,
+  HeartHandshake,
+  UserCheck,
+  PlayCircle,
+  AlertCircle,
+  Sparkles,
+  Pill,
+  Stethoscope,
+  Send,
+  CheckCircle2
+} from 'lucide-react';
 
 export default function Navbar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, role, logout, sendVerificationEmail } = useAuth();
   const { activeEmergency } = useEmergency();
   const { lang, changeLanguage } = useLanguage();
+
+  const [resendStatus, setResendStatus] = useState(null);
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendStatus(null);
+    try {
+      const res = await sendVerificationEmail();
+      setResendStatus({ success: true, message: res.message || 'Verification email sent!' });
+    } catch (err) {
+      setResendStatus({
+        success: false,
+        message: err.response?.data?.message || 'Failed to send verification email.'
+      });
+    } finally {
+      setResendLoading(false);
+      setTimeout(() => setResendStatus(null), 4000);
+    }
+  };
 
   const navLinks = [
     { to: '/', label: 'Overview', icon: Shield },
     { to: '/simulator', label: 'Watch Simulator', icon: Watch },
     { to: '/family', label: 'Family Dashboard', icon: Users },
     { to: '/caretaker', label: 'Caretaker', icon: HeartHandshake },
-    { to: '/senior', label: 'Senior', icon: UserCheck },
-    { to: '/ai', label: 'AI Guide', icon: Sparkles },
-    { to: '/medicines', label: 'Medicines', icon: Pill },
-    { to: '/demo', label: 'Demo Mode', icon: PlayCircle, highlight: true }
+    { to: '/senior', label: 'Senior', icon: UserCheck }
   ];
 
+  if (role === 'healthcare_provider' || role === 'admin') {
+    navLinks.push({ to: '/provider', label: 'Provider', icon: Stethoscope });
+  }
+
+  if (role === 'admin') {
+    navLinks.push({ to: '/admin', label: 'Admin Console', icon: Shield, highlight: true });
+  } else {
+    navLinks.push(
+      { to: '/ai', label: 'AI Guide', icon: Sparkles },
+      { to: '/medicines', label: 'Medicines', icon: Pill },
+      { to: '/demo', label: 'Demo Mode', icon: PlayCircle, highlight: true }
+    );
+  }
+
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-stone-200">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-stone-200">
       {/* Active Emergency Alert Ribbon */}
       {activeEmergency && (
         <div className="bg-rose-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between animate-pulse">
@@ -38,6 +82,31 @@ export default function Navbar() {
             >
               Open Live Command →
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Email Verification Banner */}
+      {user && user.emailVerified === false && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-xs text-amber-900 flex items-center justify-between">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-700" />
+            <span>
+              Email verification required for {user.email}. Please verify your email for full emergency alerting.
+            </span>
+            {resendStatus && (
+              <span className={`ml-2 font-bold ${resendStatus.success ? 'text-emerald-700' : 'text-rose-700'}`}>
+                {resendStatus.message}
+              </span>
+            )}
+            <button
+              onClick={handleResendVerification}
+              disabled={resendLoading}
+              className="ml-auto underline hover:text-amber-950 font-bold flex items-center gap-1 shrink-0 disabled:opacity-50"
+            >
+              <Send className="w-3 h-3" />
+              {resendLoading ? 'Sending...' : 'Resend verification email'}
+            </button>
           </div>
         </div>
       )}
@@ -87,7 +156,7 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right Tools: Language Switcher + Role Selector */}
+          {/* Right Tools: Language Switcher + User Info */}
           <div className="flex items-center gap-3">
             {/* Language Selector */}
             <div className="flex items-center bg-stone-100 p-0.5 rounded-xl text-xs font-semibold text-stone-600">
@@ -114,7 +183,7 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Real Authenticated Session Info & Logout (RBAC Pillar 1) */}
+            {/* Real Authenticated Session Info & Logout */}
             <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
               {user ? (
                 <div className="flex items-center gap-2">
@@ -133,12 +202,20 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <Link
-                  to="/login"
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 text-xs font-bold transition shadow-xs"
-                >
-                  Sign In
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/login"
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 text-xs font-bold transition shadow-xs"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition hidden sm:inline-block"
+                  >
+                    Register
+                  </Link>
+                </div>
               )}
             </div>
           </div>

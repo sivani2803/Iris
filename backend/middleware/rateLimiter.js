@@ -61,7 +61,7 @@ function createRateLimiter(options = {}) {
 // Preset Limiters
 const authLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 20, // 20 attempts per minute
+  max: 100, // 100 attempts per minute
   code: 'AUTH_RATE_LIMIT_EXCEEDED',
   message: 'Too many authentication attempts. Please wait one minute before trying again.'
 });
