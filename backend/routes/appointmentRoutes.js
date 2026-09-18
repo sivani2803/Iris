@@ -2,7 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
 const AuditLog = require('../models/AuditLog');
-const { authorizeSeniorAccess } = require('../middleware/authMiddleware');
+const { authorizeSeniorAccess, authenticateToken } = require('../middleware/authMiddleware');
+
+// GET /api/appointments/me (Context-aware appointments)
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const targetSeniorId = req.user.seniorId;
+    if (!targetSeniorId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const appointments = await Appointment.find({ seniorId: targetSeniorId }).sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, data: appointments });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // GET /api/appointments/:seniorId (Protected with authorizeSeniorAccess)
 router.get('/:seniorId', authorizeSeniorAccess, async (req, res) => {
@@ -17,8 +32,14 @@ router.get('/:seniorId', authorizeSeniorAccess, async (req, res) => {
 // POST /api/appointments (Protected with authorizeSeniorAccess)
 router.post('/', authorizeSeniorAccess, async (req, res) => {
   try {
+    let seniorId = req.body.seniorId || (req.user ? req.user.seniorId : null);
+    if (!seniorId && !req.user) {
+      seniorId = 'S102';
+    }
+    if (!seniorId) {
+      return res.status(400).json({ success: false, message: 'Senior ID is required or user must be linked to a senior' });
+    }
     const {
-      seniorId = 'S102',
       doctor,
       specialty,
       date,

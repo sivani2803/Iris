@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useEmergency } from '../context/EmergencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { emergencyApi } from '../services/api';
+import { IMAGES } from '../assets/images';
 import {
   ShieldAlert,
   Mic,
@@ -62,8 +63,15 @@ export default function SeniorDashboardPage() {
       {/* Reassuring Greeting Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-stone-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5 text-center sm:text-left">
-          <div className="w-20 h-20 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center text-4xl shadow-inner shrink-0">
-            👵
+          <div className="relative shrink-0">
+            <img
+              src={IMAGES.seniorAvatarRamesh.src}
+              alt={IMAGES.seniorAvatarRamesh.alt}
+              width={IMAGES.seniorAvatarRamesh.width}
+              height={IMAGES.seniorAvatarRamesh.height}
+              className="w-20 h-20 rounded-3xl object-cover border-2 border-teal-600/30 shadow-sm"
+            />
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow-xs"></span>
           </div>
           <div>
             <span className="text-xs uppercase font-bold tracking-wider text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">

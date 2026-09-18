@@ -50,10 +50,33 @@ router.post('/health-event', telemetryLimiter, async (req, res) => {
   }
 });
 
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../middleware/authMiddleware');
+
+function extractAuthInfo(req) {
+  try {
+    const auth = req.headers['authorization'];
+    if (auth && auth.startsWith('Bearer ')) {
+      const decoded = jwt.decode(auth.split(' ')[1]);
+      return { hasToken: true, seniorId: decoded ? decoded.seniorId : null };
+    }
+  } catch (_) {}
+  return { hasToken: false, seniorId: null };
+}
+
 // GET /api/emergency/active
 router.get('/active', async (req, res) => {
   try {
-    const seniorId = req.query.seniorId || 'S102';
+    const authInfo = extractAuthInfo(req);
+    // If user is authenticated but has no linked senior, do NOT leak S102 data
+    if (authInfo.hasToken && !authInfo.seniorId && !req.query.seniorId) {
+      return res.status(200).json({
+        success: true,
+        data: null
+      });
+    }
+
+    const seniorId = req.query.seniorId || authInfo.seniorId || 'S102';
     const emergency = await Emergency.findOne({ seniorId, active: true }).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -68,7 +91,15 @@ router.get('/active', async (req, res) => {
 // GET /api/emergency/history
 router.get('/history', async (req, res) => {
   try {
-    const seniorId = req.query.seniorId || 'S102';
+    const authInfo = extractAuthInfo(req);
+    if (authInfo.hasToken && !authInfo.seniorId && !req.query.seniorId) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    const seniorId = req.query.seniorId || authInfo.seniorId || 'S102';
     const emergencies = await Emergency.find({ seniorId }).sort({ createdAt: -1 }).limit(10);
     return res.status(200).json({ success: true, data: emergencies });
   } catch (error) {

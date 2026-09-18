@@ -28,19 +28,22 @@ import HealthcareProviderDashboardPage from './pages/HealthcareProviderDashboard
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <EmergencyProvider>
-          <Router>
-            <div className="min-h-screen flex flex-col bg-surface-warm text-charcoal-900 font-sans">
-              <Navbar />
-              <main className="flex-1">
-                <Routes>
-                  {/* Public Authentication Routes */}
-                  <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary name="IRIS Root Application">
+      <AuthProvider>
+        <LanguageProvider>
+          <EmergencyProvider>
+            <Router>
+              <div className="min-h-screen flex flex-col bg-surface-warm text-charcoal-900 font-sans">
+                <Navbar />
+                <main className="flex-1">
+                  <ErrorBoundary name="IRIS Route Host">
+                    <Routes>
+                      {/* Public Authentication Routes */}
+                      <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -118,11 +121,13 @@ export default function App() {
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
-              </main>
-            </div>
-          </Router>
-        </EmergencyProvider>
-      </LanguageProvider>
-    </AuthProvider>
+              </ErrorBoundary>
+            </main>
+          </div>
+        </Router>
+      </EmergencyProvider>
+    </LanguageProvider>
+  </AuthProvider>
+</ErrorBoundary>
   );
 }

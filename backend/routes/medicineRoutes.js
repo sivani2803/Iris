@@ -2,7 +2,41 @@ const express = require('express');
 const router = express.Router();
 const Medicine = require('../models/Medicine');
 const AuditLog = require('../models/AuditLog');
-const { authorizeSeniorAccess } = require('../middleware/authMiddleware');
+const { authorizeSeniorAccess, authenticateToken } = require('../middleware/authMiddleware');
+
+// GET /api/medicines/me (Context-aware medication schedule)
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const targetSeniorId = req.user.seniorId;
+    if (!targetSeniorId) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          medicines: [],
+          total: 0,
+          takenCount: 0,
+          adherenceRate: 100
+        }
+      });
+    }
+
+    const medicines = await Medicine.find({ seniorId: targetSeniorId }).sort({ time: 1 });
+    const takenCount = medicines.filter(m => m.status === 'taken').length;
+    const adherenceRate = medicines.length > 0 ? Math.round((takenCount / medicines.length) * 100) : 100;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        medicines,
+        total: medicines.length,
+        takenCount,
+        adherenceRate
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // GET /api/medicines/:seniorId (Protected with authorizeSeniorAccess)
 router.get('/:seniorId', authorizeSeniorAccess, async (req, res) => {
@@ -28,7 +62,14 @@ router.get('/:seniorId', authorizeSeniorAccess, async (req, res) => {
 // POST /api/medicines (Protected with authorizeSeniorAccess)
 router.post('/', authorizeSeniorAccess, async (req, res) => {
   try {
-    const { seniorId = 'S102', name, dosage, time, frequency = 'Daily', instructions } = req.body;
+    let seniorId = req.body.seniorId || (req.user ? req.user.seniorId : null);
+    if (!seniorId && !req.user) {
+      seniorId = 'S102';
+    }
+    if (!seniorId) {
+      return res.status(400).json({ success: false, message: 'Senior ID is required or user must be linked to a senior' });
+    }
+    const { name, dosage, time, frequency = 'Daily', instructions } = req.body;
     if (!name || !dosage || !time) {
       return res.status(400).json({ success: false, message: 'Name, dosage, and time are required' });
     }

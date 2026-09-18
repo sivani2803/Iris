@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const medicineSchema = new mongoose.Schema({
-  seniorId: { type: String, required: true, default: 'S102' },
+  seniorId: { type: String, required: true, index: true },
   name: { type: String, required: true },
   dosage: { type: String, required: true },
   time: { type: String, required: true }, // e.g. "08:00 AM"

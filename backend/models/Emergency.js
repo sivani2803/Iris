@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const emergencySchema = new mongoose.Schema({
-  seniorId: { type: String, required: true, default: 'S102' },
+  seniorId: { type: String, required: true, index: true },
   status: {
     type: String,
     enum: [

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEmergency } from '../context/EmergencyContext';
 import { useLanguage } from '../context/LanguageContext';
+import LanguageSelectorModal from './common/LanguageSelectorModal';
 import {
   Shield,
   Watch,
@@ -15,17 +16,19 @@ import {
   Pill,
   Stethoscope,
   Send,
-  CheckCircle2
+  Globe,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Navbar() {
   const location = useLocation();
   const { user, role, logout, sendVerificationEmail } = useAuth();
   const { activeEmergency } = useEmergency();
-  const { lang, changeLanguage } = useLanguage();
+  const { currentLanguageInfo, t } = useLanguage();
 
   const [resendStatus, setResendStatus] = useState(null);
   const [resendLoading, setResendLoading] = useState(false);
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
 
   const handleResendVerification = async () => {
     setResendLoading(true);
@@ -45,36 +48,36 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { to: '/', label: 'Overview', icon: Shield },
-    { to: '/simulator', label: 'Watch Simulator', icon: Watch },
-    { to: '/family', label: 'Family Dashboard', icon: Users },
-    { to: '/caretaker', label: 'Caretaker', icon: HeartHandshake },
-    { to: '/senior', label: 'Senior', icon: UserCheck }
+    { to: '/', label: t('overview') || 'Overview', icon: Shield },
+    { to: '/simulator', label: t('simulator') || 'Watch Simulator', icon: Watch },
+    { to: '/family', label: t('familyDashboard') || 'Family Dashboard', icon: Users },
+    { to: '/caretaker', label: t('caretakerDashboard') || 'Caretaker', icon: HeartHandshake },
+    { to: '/senior', label: t('seniorDashboard') || 'Senior', icon: UserCheck }
   ];
 
   if (role === 'healthcare_provider' || role === 'admin') {
-    navLinks.push({ to: '/provider', label: 'Provider', icon: Stethoscope });
+    navLinks.push({ to: '/provider', label: t('providerDashboard') || 'Provider', icon: Stethoscope });
   }
 
   if (role === 'admin') {
-    navLinks.push({ to: '/admin', label: 'Admin Console', icon: Shield, highlight: true });
+    navLinks.push({ to: '/admin', label: t('adminConsole') || 'Admin Console', icon: Shield, highlight: true });
   } else {
     navLinks.push(
-      { to: '/ai', label: 'AI Guide', icon: Sparkles },
-      { to: '/medicines', label: 'Medicines', icon: Pill },
-      { to: '/demo', label: 'Demo Mode', icon: PlayCircle, highlight: true }
+      { to: '/ai', label: t('aiGuide') || 'AI Guide', icon: Sparkles },
+      { to: '/medicines', label: t('medicines') || 'Medicines', icon: Pill },
+      { to: '/demo', label: t('demoMode') || 'Demo Mode', icon: PlayCircle, highlight: true }
     );
   }
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-stone-200">
-      {/* Active Emergency Alert Ribbon */}
+      {/* Active Emergency Alert Ribbon - Zero Hardcoded Data Leakage */}
       {activeEmergency && (
         <div className="bg-rose-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between animate-pulse">
           <div className="flex items-center gap-2 max-w-5xl mx-auto w-full">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>
-              🔴 ACTIVE EMERGENCY DETECTED: Senior Savitri Devi (S102) — Risk Level: {activeEmergency.riskLevel} — Responder: {activeEmergency.assignedCaretakerData?.name || 'Dispatching...'} (ETA: {activeEmergency.etaMinutes} min)
+              🔴 {t('activeEmergency') || 'ACTIVE EMERGENCY'}: Senior {activeEmergency.seniorName || activeEmergency.seniorId || 'Recipient'} — Risk Level: {activeEmergency.riskLevel} — Responder: {activeEmergency.assignedCaretakerData?.name || 'Dispatching...'} (ETA: {activeEmergency.etaMinutes} min)
             </span>
             <Link
               to="/family"
@@ -127,7 +130,7 @@ export default function Navbar() {
                 </span>
               </div>
               <p className="text-[10px] text-stone-500 hidden sm:block -mt-0.5">
-                Care that responds, even when they can't.
+                {t('irisTagline') || "Care that responds, even when they can't."}
               </p>
             </div>
           </Link>
@@ -143,7 +146,7 @@ export default function Navbar() {
                   to={link.to}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition ${
                     isActive
-                      ? 'bg-stone-100 text-charcoal-950 font-semibold shadow-xs'
+                      ? 'bg-stone-100 text-charcoal-950 font-semibold shadow-2xs'
                       : link.highlight
                       ? 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 font-semibold'
                       : 'text-stone-600 hover:text-charcoal-900 hover:bg-stone-50'
@@ -156,32 +159,21 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right Tools: Language Switcher + User Info */}
+          {/* Right Tools: 32-Language Selector + User Profile / Auth */}
           <div className="flex items-center gap-3">
-            {/* Language Selector */}
-            <div className="flex items-center bg-stone-100 p-0.5 rounded-xl text-xs font-semibold text-stone-600">
-              <button
-                onClick={() => changeLanguage('en')}
-                className={`px-2 py-1 rounded-lg transition ${lang === 'en' ? 'bg-white text-teal-800 shadow-xs' : 'hover:text-stone-900'}`}
-                title="English"
-              >
-                EN
-              </button>
-              <button
-                onClick={() => changeLanguage('te')}
-                className={`px-2 py-1 rounded-lg transition ${lang === 'te' ? 'bg-white text-teal-800 shadow-xs' : 'hover:text-stone-900'}`}
-                title="తెలుగు"
-              >
-                తెలుగు
-              </button>
-              <button
-                onClick={() => changeLanguage('hi')}
-                className={`px-2 py-1 rounded-lg transition ${lang === 'hi' ? 'bg-white text-teal-800 shadow-xs' : 'hover:text-stone-900'}`}
-                title="हिन्दी"
-              >
-                हिन्दी
-              </button>
-            </div>
+            {/* 32-Language Selector Trigger Button */}
+            <button
+              onClick={() => setIsLangModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:border-teal-400 bg-stone-50/70 hover:bg-white text-xs font-semibold text-charcoal-900 transition shadow-2xs group cursor-pointer"
+              title="Change Language (32 Languages Available)"
+              aria-label="Change Language"
+            >
+              <Globe className="w-3.5 h-3.5 text-teal-600 group-hover:rotate-12 transition-transform" />
+              <span className="font-bold truncate max-w-[90px]">
+                {currentLanguageInfo?.nativeName || 'English'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-stone-400 shrink-0" />
+            </button>
 
             {/* Real Authenticated Session Info & Logout */}
             <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
@@ -195,25 +187,25 @@ export default function Navbar() {
                   </div>
                   <button
                     onClick={logout}
-                    className="p-2 rounded-xl text-stone-500 hover:text-rose-600 hover:bg-rose-50 transition text-xs font-semibold"
-                    title="Sign Out"
+                    className="p-2 rounded-xl text-stone-500 hover:text-rose-600 hover:bg-rose-50 transition text-xs font-semibold cursor-pointer"
+                    title={t('signOut') || 'Sign Out'}
                   >
-                    Logout
+                    {t('signOut') || 'Logout'}
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
                     to="/login"
-                    className="px-3.5 py-1.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 text-xs font-bold transition shadow-xs"
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 text-xs font-bold transition shadow-2xs"
                   >
-                    Sign In
+                    {t('signIn') || 'Sign In'}
                   </Link>
                   <Link
                     to="/register"
                     className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition hidden sm:inline-block"
                   >
-                    Register
+                    {t('register') || 'Register'}
                   </Link>
                 </div>
               )}
@@ -221,6 +213,12 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* 32-Language Modal */}
+      <LanguageSelectorModal
+        isOpen={isLangModalOpen}
+        onClose={() => setIsLangModalOpen(false)}
+      />
     </header>
   );
 }

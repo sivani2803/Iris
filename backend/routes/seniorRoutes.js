@@ -3,13 +3,111 @@ const router = express.Router();
 const SeniorProfile = require('../models/SeniorProfile');
 const HealthEvent = require('../models/HealthEvent');
 const AuditLog = require('../models/AuditLog');
-const { authorizeSeniorAccess, authenticateToken } = require('../middleware/authMiddleware');
+const FamilyRelationship = require('../models/FamilyRelationship');
+const { authorizeSeniorAccess, authenticateToken, normalizeRole } = require('../middleware/authMiddleware');
 
 // GET /api/seniors (List all seniors - restricted to admin/caretakers or system)
 router.get('/', async (req, res) => {
   try {
     const seniors = await SeniorProfile.find();
     return res.status(200).json({ success: true, data: seniors });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/seniors/me (Context-aware senior profile resolution)
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const userRole = normalizeRole(req.user.role);
+    let targetSeniorId = req.user.seniorId;
+
+    if (!targetSeniorId && userRole === 'family') {
+      const rel = await FamilyRelationship.findOne({ familyUserId: req.user._id, status: 'APPROVED' });
+      if (rel) {
+        targetSeniorId = rel.seniorId;
+        req.user.seniorId = rel.seniorId;
+        await req.user.save();
+      }
+    }
+
+    if (!targetSeniorId) {
+      return res.status(200).json({
+        success: true,
+        connected: false,
+        data: null,
+        message: 'No senior profile connected yet'
+      });
+    }
+
+    let senior = await SeniorProfile.findOne({ seniorId: targetSeniorId });
+    if (!senior && userRole === 'senior') {
+      senior = await SeniorProfile.create({
+        seniorId: targetSeniorId,
+        userId: req.user._id,
+        name: req.user.name,
+        age: 72,
+        gender: req.user.profileData?.gender || 'Not specified',
+        bloodGroup: req.user.profileData?.bloodGroup || 'O+',
+        phone: req.user.phone || '+91 98765 00000',
+        address: req.user.profileData?.address || 'Madhapur, Hyderabad'
+      });
+    }
+
+    if (!senior) {
+      return res.status(200).json({ success: true, connected: false, data: null, message: 'Senior profile not found' });
+    }
+
+    return res.status(200).json({ success: true, connected: true, data: senior });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/seniors/me/health (Context-aware senior health vitals)
+router.get('/me/health', authenticateToken, async (req, res) => {
+  try {
+    const targetSeniorId = req.user.seniorId;
+    if (!targetSeniorId) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          current: { heartRate: 72, spo2: 98, motionState: 'resting', fallDetected: false, timestamp: new Date() },
+          recentHistory: []
+        }
+      });
+    }
+
+    const events = await HealthEvent.find({ seniorId: targetSeniorId })
+      .sort({ timestamp: -1 })
+      .limit(30);
+
+    const latest = events[0] || {
+      heartRate: 72,
+      spo2: 98,
+      motionState: 'active',
+      fallDetected: false,
+      timestamp: new Date()
+    };
+
+    if (req.user) {
+      AuditLog.logEvent({
+        action: 'HEALTH_DATA_ACCESSED',
+        actor: req.user.email,
+        actorRole: req.user.role,
+        seniorId: targetSeniorId,
+        targetType: 'HealthEvent',
+        metadata: { recordCount: events.length }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        current: latest,
+        recentHistory: events
+      }
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

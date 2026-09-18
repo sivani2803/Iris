@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
-  seniorId: { type: String, required: true, default: 'S102' },
+  seniorId: { type: String, required: true, index: true },
   doctor: { type: String, required: true },
   specialty: { type: String, required: true },
   date: { type: String, required: true }, // e.g. "22 Sept"

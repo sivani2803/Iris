@@ -72,9 +72,32 @@ export const emergencyApi = {
 
 // Senior & Vitals API
 export const seniorApi = {
-  getProfile: (id = 'S102') => api.get(`/seniors/${id}`),
-  getHealth: (id = 'S102') => api.get(`/seniors/${id}/health`),
+  getMe: () => api.get('/seniors/me'),
+  getMyHealth: () => api.get('/seniors/me/health'),
+  getProfile: (id) => api.get(`/seniors/${id}`),
+  getHealth: (id) => api.get(`/seniors/${id}/health`),
   updateProfile: (id, data) => api.put(`/seniors/${id}`, data)
+};
+
+// Medicines API
+export const medicineApi = {
+  getMyMedicines: () => api.get('/medicines/me'),
+  getForSenior: (seniorId) => api.get(`/medicines/${seniorId}`),
+  addMedicine: (data) => api.post('/medicines', data),
+  updateStatus: (id, status) => api.patch(`/medicines/${id}/status`, { status })
+};
+
+// Appointments API
+export const appointmentApi = {
+  getMyAppointments: () => api.get('/appointments/me'),
+  getForSenior: (seniorId) => api.get(`/appointments/${seniorId}`),
+  addAppointment: (data) => api.post('/appointments', data)
+};
+
+// Auth & Connection API
+export const authApi = {
+  connectSenior: (data) => api.post('/auth/connect-senior', data),
+  updateLanguage: (preferredLanguage) => api.patch('/auth/profile/language', { preferredLanguage })
 };
 
 // Caretaker API

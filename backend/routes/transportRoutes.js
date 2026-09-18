@@ -2,6 +2,23 @@ const express = require('express');
 const router = express.Router();
 const TransportRequest = require('../models/TransportRequest');
 
+const { authenticateToken } = require('../middleware/authMiddleware');
+
+// GET /api/transport/me (Context-aware transport requests)
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const targetSeniorId = req.user.seniorId;
+    if (!targetSeniorId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const requests = await TransportRequest.find({ seniorId: targetSeniorId }).sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/transport/:seniorId
 router.get('/:seniorId', async (req, res) => {
   try {
@@ -15,8 +32,8 @@ router.get('/:seniorId', async (req, res) => {
 // POST /api/transport
 router.post('/', async (req, res) => {
   try {
+    const seniorId = req.body.seniorId || (req.user ? req.user.seniorId : null) || 'S102';
     const {
-      seniorId = 'S102',
       destination,
       appointmentReason = 'Doctor Visit',
       mobilityRequirement = 'Wheelchair accessible',

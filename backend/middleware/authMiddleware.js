@@ -199,7 +199,7 @@ async function authorizeSeniorAccess(req, res, next) {
       }
 
       // Check assignment to target senior
-      if (targetSeniorId && req.user.seniorId && req.user.seniorId !== targetSeniorId) {
+      if (targetSeniorId && (!req.user.seniorId || req.user.seniorId !== targetSeniorId)) {
         AuditLog.logEvent({
           action: 'SECURITY_VIOLATION',
           actor: req.user.email,

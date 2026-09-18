@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const transportRequestSchema = new mongoose.Schema({
-  seniorId: { type: String, required: true, default: 'S102' },
+  seniorId: { type: String, required: true, index: true },
   destination: { type: String, required: true },
   appointmentReason: { type: String, default: 'Hospital Visit' },
   mobilityRequirement: { type: String, enum: ['Wheelchair accessible', 'Walking assistance', 'Standard'], default: 'Wheelchair accessible' },

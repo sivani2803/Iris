@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEmergency } from '../context/EmergencyContext';
 import { seniorApi } from '../services/api';
+import { IMAGES } from '../assets/images';
 import {
   Stethoscope,
   Heart,
@@ -96,13 +97,22 @@ export default function HealthcareProviderDashboardPage() {
               <div className="text-xs text-stone-400 py-4 text-center">Loading patient profile...</div>
             ) : (
               <div className="space-y-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-100">
-                  <div className="font-bold text-sm text-charcoal-900">{seniorData?.name || 'Savitri Devi'}</div>
-                  <div className="text-stone-500 text-[11px] mt-0.5">
-                    Age: {seniorData?.age || 74} • Blood Group: {seniorData?.bloodGroup || 'B+'}
-                  </div>
-                  <div className="text-stone-500 text-[11px]">
-                    Address: {seniorData?.address || 'Madhapur, Hyderabad'}
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-100 flex items-center gap-3">
+                  <img
+                    src={IMAGES.seniorAvatarRamesh.src}
+                    alt={IMAGES.seniorAvatarRamesh.alt}
+                    width={IMAGES.seniorAvatarRamesh.width}
+                    height={IMAGES.seniorAvatarRamesh.height}
+                    className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 shadow-2xs"
+                  />
+                  <div>
+                    <div className="font-bold text-sm text-charcoal-900">{seniorData?.name || 'Ramesh Patel'}</div>
+                    <div className="text-stone-500 text-[11px] mt-0.5">
+                      Age: {seniorData?.age || 74} • Blood Group: {seniorData?.bloodGroup || 'B+'}
+                    </div>
+                    <div className="text-stone-500 text-[11px]">
+                      Address: {seniorData?.address || 'Senior Villa, Banjara Hills, Hyderabad'}
+                    </div>
                   </div>
                 </div>
 

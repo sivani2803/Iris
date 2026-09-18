@@ -1,34 +1,69 @@
-import React, { createContext, useContext, useState } from 'react';
-import en from '../locales/en.json';
-import te from '../locales/te.json';
-import hi from '../locales/hi.json';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import { LANGUAGES, LANGUAGE_MAP, isRtlLanguage } from '../config/languages';
 
 const LanguageContext = createContext();
 
-export const TRANSLATIONS = {
-  en,
-  te,
-  hi
-};
+// Load all 32 locale dictionaries via Vite's eager glob
+const localeModules = import.meta.glob('../locales/*.json', { eager: true });
+export const TRANSLATIONS = {};
+for (const modulePath in localeModules) {
+  const match = modulePath.match(/[/\\]([^/\\]+)\.json$/);
+  if (match && match[1]) {
+    TRANSLATIONS[match[1]] = localeModules[modulePath].default || localeModules[modulePath];
+  }
+}
 
 export function LanguageProvider({ children }) {
   const [lang, setLang] = useState(() => {
     return localStorage.getItem('iris_lang') || 'en';
   });
 
-  const changeLanguage = (newLang) => {
-    if (TRANSLATIONS[newLang]) {
+  const isRtl = isRtlLanguage(lang);
+
+  // Sync document language and RTL direction
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    if (isRtl) {
+      document.body.classList.add('is-rtl');
+    } else {
+      document.body.classList.remove('is-rtl');
+    }
+  }, [lang, isRtl]);
+
+  const changeLanguage = async (newLang) => {
+    if (LANGUAGES.some(l => l.code === newLang) || TRANSLATIONS[newLang]) {
       setLang(newLang);
       localStorage.setItem('iris_lang', newLang);
+
+      // Persist to user profile if authenticated
+      const token = localStorage.getItem('iris_token');
+      if (token) {
+        try {
+          await axios.patch('/api/auth/profile/language', { preferredLanguage: newLang }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } catch (_) {}
+      }
     }
   };
 
   const t = (key) => {
-    return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.en[key] || key;
+    return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.en?.[key] || key;
   };
 
+  const currentLanguageInfo = LANGUAGE_MAP[lang] || { code: lang, name: lang, nativeName: lang, dir: isRtl ? 'rtl' : 'ltr' };
+
   return (
-    <LanguageContext.Provider value={{ lang, changeLanguage, t }}>
+    <LanguageContext.Provider value={{
+      lang,
+      isRtl,
+      currentLanguageInfo,
+      languages: LANGUAGES,
+      changeLanguage,
+      t
+    }}>
       {children}
     </LanguageContext.Provider>
   );

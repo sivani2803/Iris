@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useEmergency } from '../context/EmergencyContext';
 import { emergencyApi } from '../services/api';
+import { IMAGES } from '../assets/images';
 import LiveTimeline from '../components/LiveTimeline';
 import NodeErrorBoundary from '../components/common/NodeErrorBoundary';
 import {
@@ -112,16 +113,28 @@ export default function CaretakerDashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-stone-200">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-charcoal-900">Caretaker Dispatch & Response Portal</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-              On Duty • Rapid Response
-            </span>
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0">
+            <img
+              src={IMAGES.caregiverAvatarRavi.src}
+              alt={IMAGES.caregiverAvatarRavi.alt}
+              width={IMAGES.caregiverAvatarRavi.width}
+              height={IMAGES.caregiverAvatarRavi.height}
+              className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-500/40 shadow-xs"
+            />
+            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white"></span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
-            Active Caretaker: Ravi Kumar • Certified First-Aid & CPR • Hyderabad West Sector
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-charcoal-900">Caretaker Dispatch & Response Portal</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                On Duty • Rapid Response
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 mt-1">
+              Active Caretaker: Ravi Kumar • Certified First-Aid & CPR • Hyderabad West Sector
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -146,9 +159,18 @@ export default function CaretakerDashboardPage() {
       {activeEmergency ? (
         <div className="mt-6 rounded-3xl bg-rose-50 border-2 border-rose-400 p-6 shadow-lg animate-in fade-in">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-rose-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 animate-pulse">
-                <ShieldAlert className="w-6 h-6" />
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <img
+                  src={IMAGES.seniorAvatarRamesh.src}
+                  alt={IMAGES.seniorAvatarRamesh.alt}
+                  width={IMAGES.seniorAvatarRamesh.width}
+                  height={IMAGES.seniorAvatarRamesh.height}
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-rose-500 shadow-md"
+                />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold animate-pulse">
+                  !
+                </div>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -162,6 +184,9 @@ export default function CaretakerDashboardPage() {
                 <h2 className="text-xl font-bold text-rose-950 mt-1">
                   {activeEmergency.summary || 'Possible emergency detected'}
                 </h2>
+                <div className="text-xs text-stone-600 font-medium mt-0.5">
+                  Senior: <strong>Ramesh Patel (74)</strong> • Senior Villa, Banjara Hills
+                </div>
               </div>
             </div>
 

@@ -4,8 +4,7 @@ const consentSchema = new mongoose.Schema({
   seniorId: {
     type: String,
     required: true,
-    index: true,
-    default: 'S102'
+    index: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,

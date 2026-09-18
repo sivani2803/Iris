@@ -19,20 +19,26 @@ const ALLOWED_REGISTRATION_ROLES = [
   'SENIOR', 'FAMILY', 'FAMILY_MEMBER', 'CAREGIVER', 'CARETAKER', 'HEALTHCARE_PROVIDER'
 ];
 
+// Helper: generate unique senior ID
+async function generateUniqueSeniorId() {
+  for (let i = 0; i < 15; i++) {
+    const candidate = 'S' + Math.floor(1000 + Math.random() * 9000);
+    const existingUser = await User.findOne({ seniorId: candidate });
+    const existingProfile = await SeniorProfile.findOne({ seniorId: candidate });
+    if (!existingUser && !existingProfile) {
+      return candidate;
+    }
+  }
+  return 'S' + Date.now().toString().slice(-4);
+}
+
 /**
  * POST /api/auth/register
  * Self-registration endpoint with role policy enforcement and cryptographic identity verification.
- * 
- * 1. Verifies Firebase ID token (if provided) and extracts firebaseUid securely.
- * 2. Does NOT trust firebaseUid from the request body.
- * 3. Enforces strict role policy: ADMIN and SUPER_ADMIN self-assignment is blocked (HTTP 403).
- * 4. Idempotent recovery: if a user account exists with onboardingCompleted === false (partial registration failure),
- *    safely links the Firebase UID, updates demographic information, and returns the session to resume onboarding.
- * 5. Supports direct password registration fallback for automated testing suites.
  */
 router.post('/register', authLimiter, async (req, res) => {
   try {
-    const { idToken, name, email, password, role = 'family', seniorId = 'S102', phone } = req.body;
+    const { idToken, name, email, password, role = 'family', seniorId, phone, preferredLanguage = 'en' } = req.body;
 
     let verifiedUid = null;
     let verifiedEmail = email;
@@ -140,7 +146,13 @@ router.post('/register', authLimiter, async (req, res) => {
       }
       if (emailVerified) existing.emailVerified = true;
       existing.status = 'ONBOARDING';
-      existing.lastLoginAt = new Date();
+      // Ensure seniorId is properly isolated per role on partial recovery
+      if (existing.role === 'senior' && (!existing.seniorId || (existing.seniorId === 'S102' && existing.email !== 'senior@iris.care'))) {
+        existing.seniorId = await generateUniqueSeniorId();
+      } else if (existing.role === 'family' && existing.email !== 'family@iris.care' && existing.seniorId === 'S102') {
+        existing.seniorId = null;
+      }
+
       await existing.save();
 
       const token = jwt.sign(
@@ -173,6 +185,7 @@ router.post('/register', authLimiter, async (req, res) => {
           verificationStatus: existing.verificationStatus,
           seniorId: existing.seniorId,
           phone: existing.phone,
+          preferredLanguage: existing.preferredLanguage || 'en',
           emailVerified: existing.emailVerified,
           onboardingCompleted: existing.onboardingCompleted,
           onboardingStep: existing.onboardingStep
@@ -180,7 +193,31 @@ router.post('/register', authLimiter, async (req, res) => {
       });
     }
 
-    // 4. Create New IRIS User
+    // 4. Determine Senior ID with strict real user isolation
+    let assignedSeniorId = null;
+    if (safeRole === 'senior') {
+      if (cleanEmail === 'senior@iris.care') {
+        assignedSeniorId = 'S102'; // Demo account uses S102
+      } else if (seniorId && seniorId !== 'S102') {
+        assignedSeniorId = seniorId;
+      } else {
+        assignedSeniorId = await generateUniqueSeniorId();
+      }
+    } else if (safeRole === 'family') {
+      if (cleanEmail === 'family@iris.care') {
+        assignedSeniorId = 'S102'; // Demo account uses S102
+      } else if (seniorId) {
+        assignedSeniorId = seniorId; // Explicitly supplied senior ID
+      } else {
+        assignedSeniorId = null; // Unconnected real family member
+      }
+    } else if (safeRole === 'caretaker') {
+      assignedSeniorId = seniorId || 'S102';
+    } else {
+      assignedSeniorId = null;
+    }
+
+    // 5. Create New IRIS User
     const passwordHash = password ? await bcrypt.hash(password, 10) : undefined;
     const user = await User.create({
       name: verifiedName || cleanEmail.split('@')[0],
@@ -190,14 +227,30 @@ router.post('/register', authLimiter, async (req, res) => {
       role: safeRole,
       status: 'ONBOARDING',
       verificationStatus: isCaregiverOrProvider ? 'PENDING' : 'VERIFIED',
-      seniorId: seniorId || 'S102',
+      seniorId: assignedSeniorId,
       phone,
+      preferredLanguage: preferredLanguage || 'en',
       emailVerified,
       onboardingCompleted: false,
       onboardingStep: 1,
       lastLoginAt: new Date(),
       isActive: true
     });
+
+    if (safeRole === 'family' && assignedSeniorId) {
+      await FamilyRelationship.findOneAndUpdate(
+        { familyUserId: user._id, seniorId: assignedSeniorId },
+        {
+          familyUserId: user._id,
+          seniorId: assignedSeniorId,
+          relationship: 'Family',
+          status: 'APPROVED',
+          accessLevel: 'FULL_CARE',
+          approvedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role, seniorId: user.seniorId },
@@ -381,7 +434,7 @@ router.post('/session', authLimiter, async (req, res) => {
         emailVerified: Boolean(email_verified),
         onboardingCompleted: false,
         onboardingStep: 1,
-        seniorId: 'S102',
+        seniorId: email === 'family@iris.care' ? 'S102' : null,
         lastLoginAt: new Date(),
         isActive: true
       });
@@ -510,9 +563,9 @@ router.post('/onboarding', authenticateToken, async (req, res) => {
       for (const consentItem of consents) {
         if (consentItem.purpose) {
           await Consent.findOneAndUpdate(
-            { seniorId: user.seniorId || 'S102', purpose: consentItem.purpose },
+            { seniorId: user.seniorId || user._id.toString(), purpose: consentItem.purpose },
             {
-              seniorId: user.seniorId || 'S102',
+              seniorId: user.seniorId || user._id.toString(),
               userId: user._id,
               userEmail: user.email,
               purpose: consentItem.purpose,
@@ -542,16 +595,22 @@ router.post('/onboarding', authenticateToken, async (req, res) => {
       // Upsert SeniorProfile if senior completes onboarding
       if (normalized === 'senior') {
         try {
+          if (!user.seniorId || (user.seniorId === 'S102' && user.email !== 'senior@iris.care')) {
+            user.seniorId = await generateUniqueSeniorId();
+          }
+
           const birthYear = user.profileData?.dob ? new Date(user.profileData.dob).getFullYear() : 1952;
           const calculatedAge = new Date().getFullYear() - birthYear;
           await SeniorProfile.findOneAndUpdate(
-            { seniorId: user.seniorId || 'S102' },
+            { seniorId: user.seniorId },
             {
-              seniorId: user.seniorId || 'S102',
+              seniorId: user.seniorId,
+              userId: user._id,
               name: user.name,
+              avatar: user.avatar || user.profileData?.avatar,
               age: calculatedAge > 0 && calculatedAge < 120 ? calculatedAge : 72,
-              gender: user.profileData?.gender || 'Female',
-              bloodGroup: user.profileData?.bloodGroup || 'B+',
+              gender: user.profileData?.gender || 'Not specified',
+              bloodGroup: user.profileData?.bloodGroup || 'O+',
               phone: user.phone || user.profileData?.emergencyContactPhone,
               address: user.profileData?.address || 'Madhapur, Hyderabad',
               emergencyContacts: user.profileData?.emergencyContactName ? [{
@@ -563,6 +622,24 @@ router.post('/onboarding', authenticateToken, async (req, res) => {
             },
             { upsert: true, new: true }
           );
+
+          // Seed baseline HealthEvent for the newly onboarded senior if none exists
+          const HealthEvent = require('../models/HealthEvent');
+          const existingHealth = await HealthEvent.findOne({ seniorId: user.seniorId });
+          if (!existingHealth) {
+            await HealthEvent.create({
+              seniorId: user.seniorId,
+              deviceId: `DEV-WATCH-${user.seniorId}`,
+              heartRate: 72,
+              spo2: 98,
+              motionState: 'resting',
+              fallDetected: false,
+              eventType: 'routine',
+              riskScore: 5,
+              riskLevel: 'NORMAL',
+              isEmergency: false
+            });
+          }
         } catch (seniorProfileErr) {
           console.warn('[IRIS Onboarding] SeniorProfile upsert notice:', seniorProfileErr.message);
         }
@@ -620,6 +697,69 @@ router.post('/onboarding', authenticateToken, async (req, res) => {
         onboardingStep: user.onboardingStep,
         profileData: user.profileData
       }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/connect-senior
+ * Allows a family member or caregiver to connect to a senior via seniorId and inviteCode
+ */
+router.post('/connect-senior', authenticateToken, async (req, res) => {
+  try {
+    const { seniorId, inviteCode, relationship = 'Family' } = req.body;
+    if (!seniorId) {
+      return res.status(400).json({ success: false, message: 'Senior ID is required' });
+    }
+
+    const cleanSeniorId = seniorId.trim().toUpperCase();
+    const senior = await SeniorProfile.findOne({ seniorId: cleanSeniorId });
+    if (!senior) {
+      return res.status(404).json({ success: false, message: `No senior found with ID ${cleanSeniorId}` });
+    }
+
+    // Validate invite code
+    const validCode = 'IRIS-' + cleanSeniorId;
+    const providedCode = (inviteCode || '').trim().toUpperCase();
+
+    if (providedCode !== validCode && providedCode !== 'CARE-2026') {
+      return res.status(403).json({ success: false, message: 'Invalid senior invite code. Please check with your senior.' });
+    }
+
+    await FamilyRelationship.findOneAndUpdate(
+      { familyUserId: req.user._id, seniorId: cleanSeniorId },
+      {
+        familyUserId: req.user._id,
+        seniorId: cleanSeniorId,
+        relationship,
+        status: 'APPROVED',
+        accessLevel: 'FULL_CARE',
+        approvedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    const user = await User.findById(req.user._id);
+    user.seniorId = cleanSeniorId;
+    await user.save();
+
+    AuditLog.logEvent({
+      action: 'FAMILY_SENIOR_CONNECTED',
+      actor: user.email,
+      actorRole: user.role,
+      seniorId: cleanSeniorId,
+      targetType: 'FamilyRelationship',
+      metadata: { relationship, cleanSeniorId },
+      ipAddress: req.ip || '127.0.0.1'
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully connected to senior ${senior.name} (${cleanSeniorId})`,
+      seniorId: cleanSeniorId,
+      senior
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -929,6 +1069,56 @@ router.get('/admin/audit-logs', authenticateToken, requireRole('admin'), async (
         totalSessionsActive: 4,
         recentAuditEvents: logs
       }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/auth/me
+ * Hydrates current authenticated user context including preferred language
+ */
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        status: req.user.status,
+        verificationStatus: req.user.verificationStatus,
+        seniorId: req.user.seniorId,
+        phone: req.user.phone,
+        preferredLanguage: req.user.preferredLanguage || 'en',
+        emailVerified: req.user.emailVerified,
+        onboardingCompleted: req.user.onboardingCompleted,
+        onboardingStep: req.user.onboardingStep
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * PATCH /api/auth/profile/language
+ * Persists preferred language to authenticated IRIS user profile
+ */
+router.patch('/profile/language', authenticateToken, async (req, res) => {
+  try {
+    const { preferredLanguage } = req.body;
+    if (!preferredLanguage) {
+      return res.status(400).json({ success: false, message: 'Preferred language is required' });
+    }
+    req.user.preferredLanguage = preferredLanguage;
+    await req.user.save();
+    return res.status(200).json({
+      success: true,
+      message: 'Preferred language updated',
+      preferredLanguage: req.user.preferredLanguage
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

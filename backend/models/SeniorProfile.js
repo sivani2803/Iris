@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
 
 const seniorProfileSchema = new mongoose.Schema({
-  seniorId: { type: String, required: true, unique: true, default: 'S102' },
+  seniorId: { type: String, required: true, unique: true, index: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   name: { type: String, required: true },
   age: { type: Number, required: true },
   gender: { type: String },
   bloodGroup: { type: String },
   phone: { type: String },
+  avatar: { type: String },
   address: { type: String },
   location: {
     lat: { type: Number, default: 17.4435 },

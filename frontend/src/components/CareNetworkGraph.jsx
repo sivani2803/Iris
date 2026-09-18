@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, HeartHandshake, Users, Hospital, Compass, AlertCircle } from 'lucide-react';
 
-export default function CareNetworkGraph({ activeEmergency, caretakerName = 'Ravi Kumar' }) {
+export default function CareNetworkGraph({ activeEmergency, seniorName, caretakerName = 'Assigned Responder' }) {
   const isEmergency = Boolean(activeEmergency);
 
   return (

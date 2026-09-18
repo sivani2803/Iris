@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema({
     default: 'UNVERIFIED',
     index: true
   },
-  seniorId: { type: String, default: 'S102' },
+  seniorId: { type: String, index: true },
+  preferredLanguage: { type: String, default: 'en' },
   phone: { type: String },
   avatar: { type: String },
   emailVerified: { type: Boolean, default: false },

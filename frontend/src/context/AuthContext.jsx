@@ -28,7 +28,7 @@ const ROLE_NORMALIZATION = {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('iris_jwt_token'));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('iris_jwt_token')));
 
   // Synchronize Axios default Authorization header
   useEffect(() => {
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  // Validate active session
+  // Validate active session with fail-safe timeout
   const verifySession = useCallback(async () => {
     if (!token) {
       setUser(null);
@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await axios.get('/api/auth/me');
+      const res = await axios.get('/api/auth/me', { timeout: 4000 });
       setUser(res.data.user);
     } catch (err) {
       console.warn('Session verification failed, logging out:', err.response?.data?.message || err.message);
