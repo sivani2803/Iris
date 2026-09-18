@@ -1,0 +1,381 @@
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
+import { createSpeechRecognizer, isSpeechRecognitionSupported, speakText } from '../services/speech';
+import {
+  Mic,
+  MicOff,
+  Send,
+  Volume2,
+  AlertTriangle,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  RefreshCw,
+  Info
+} from 'lucide-react';
+
+export default function AiAssistantPage() {
+  const { lang, t } = useLanguage();
+  const [messages, setMessages] = useState([
+    {
+      id: '1',
+      sender: 'iris',
+      text: lang === 'te'
+        ? 'నమస్కారం సావిత్రి గారూ. నేను IRIS కేర్ అసిస్టెంట్‌ని. మీరు ఎలా అనుభవిస్తున్నారో నాకు చెప్పండి, నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను.'
+        : lang === 'hi'
+        ? 'नमस्ते सावित्री जी। मैं IRIS केयर असिस्टेंट हूँ। कृपया बताएं कि आप कैसा महसूस कर रही हैं।'
+        : 'Hello Savitri. I am your IRIS Care Assistant. Tell me how you are feeling, and I will help guide you safely.',
+      urgency: 'LOW',
+      suggestedActions: ['Describe any symptom', 'Ask about medicine timing'],
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState('idle'); // 'idle' | 'listening' | 'processing' | 'responding'
+  const [micError, setMicError] = useState(null);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechRecognitionSupported());
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (messageText = inputMessage) => {
+    const textToSend = messageText.trim();
+    if (!textToSend || loading) return;
+
+    const userMsg = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: textToSend,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInputMessage('');
+    setLoading(true);
+    setVoiceFeedback('processing');
+
+    try {
+      const res = await axios.post('/api/ai/chat', {
+        message: textToSend,
+        language: lang,
+        seniorId: 'S102'
+      });
+
+      const data = res.data?.data || {};
+      const irisMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: 'iris',
+        text: data.reply || 'I am here with you. Please rest and contact your caretaker if you feel unwell.',
+        urgency: data.urgency || 'LOW',
+        suggestedActions: data.suggestedActions || [],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setMessages((prev) => [...prev, irisMsg]);
+
+      // Speak out reply gently with visual state
+      setVoiceFeedback('responding');
+      speakText(irisMsg.text, lang);
+      setTimeout(() => setVoiceFeedback('idle'), 4000);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: 'iris',
+          text: 'Unable to reach cloud AI assistant right now. If this is an emergency, please press the red HELP button on your home screen or contact caretaker Ravi Kumar directly (+91 98123 45678).',
+          urgency: 'MODERATE',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setVoiceFeedback('idle');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleListening = () => {
+    setMicError(null);
+    if (isListening) {
+      setIsListening(false);
+      setVoiceFeedback('idle');
+      return;
+    }
+
+    if (!isSpeechRecognitionSupported()) {
+      setMicError(t('micUnavailable'));
+      return;
+    }
+
+    const recognizer = createSpeechRecognizer(
+      lang,
+      (transcript) => {
+        setIsListening(false);
+        setVoiceFeedback('processing');
+        setInputMessage(transcript);
+        handleSend(transcript);
+      },
+      (err) => {
+        console.warn('Speech error:', err);
+        setIsListening(false);
+        setVoiceFeedback('idle');
+        if (err === 'not-allowed' || err?.includes?.('denied')) {
+          setMicError(t('micDenied'));
+        } else if (err !== 'no-speech') {
+          setMicError(t('micUnavailable'));
+        }
+      },
+      () => {
+        setIsListening(false);
+      }
+    );
+
+    if (recognizer) {
+      try {
+        setIsListening(true);
+        setVoiceFeedback('listening');
+        recognizer.start();
+      } catch (e) {
+        setIsListening(false);
+        setVoiceFeedback('idle');
+        setMicError(t('micUnavailable'));
+      }
+    }
+  };
+
+  const samplePrompts = {
+    en: [
+      'My chest feels uncomfortable and tight.',
+      'I feel dizzy when I stand up from bed.',
+      'I forgot to take my morning blood pressure pill.',
+      'My right knee feels stiff and swollen.'
+    ],
+    te: [
+      'నాకు తల తిరుగుతున్నట్టు ఉంది.',
+      'నా ఛాతీలో అసౌకర్యంగా ఉంది.',
+      'నేను ఉదయం రక్తపోటు మాత్ర వేసుకోవడం మర్చిపోయాను.'
+    ],
+    hi: [
+      'मुझे चक्कर आ रहे हैं और कमजोरी लग रही है।',
+      'मेरी छाती में भारीपन लग रहा है।',
+      'मैं सुबह की दवा लेना भूल गई।'
+    ]
+  };
+
+  const activePrompts = samplePrompts[lang] || samplePrompts.en;
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-5rem)] flex flex-col">
+      {/* Header */}
+      <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-xs mb-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-charcoal-900 flex items-center gap-2">
+              IRIS Care Assistant
+              <span className="text-[10px] font-semibold uppercase bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded-full">
+                AI Health Guide
+              </span>
+            </h1>
+            <p className="text-xs text-stone-500">
+              Empathetic symptom assessment with clinical safety rules • English, తెలుగు, हिन्दी
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs font-semibold text-stone-600 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200">
+          <ShieldCheck className="w-4 h-4 text-teal-600" />
+          <span>Non-Diagnostic Triage</span>
+        </div>
+      </div>
+
+      {/* Chat Messages Area */}
+      <div className="flex-1 bg-white rounded-3xl p-6 border border-stone-200 shadow-xs overflow-y-auto space-y-4">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'} animate-in fade-in`}
+          >
+            <div className="flex items-center gap-2 mb-1 text-[11px] text-stone-400">
+              <span className="font-semibold">{m.sender === 'user' ? 'Savitri Devi' : 'IRIS Assistant'}</span>
+              <span>•</span>
+              <span className="font-mono">{m.timestamp}</span>
+            </div>
+
+            <div
+              className={`max-w-2xl p-4 rounded-3xl text-sm leading-relaxed ${
+                m.sender === 'user'
+                  ? 'bg-charcoal-900 text-white rounded-br-none shadow-xs'
+                  : 'bg-stone-50 border border-stone-200/80 text-charcoal-900 rounded-bl-none shadow-xs'
+              }`}
+            >
+              {/* Urgency Badge if Assistant */}
+              {m.sender === 'iris' && m.urgency && m.urgency !== 'LOW' && (
+                <div className="mb-2">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                      m.urgency === 'CRITICAL'
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'bg-amber-100 text-amber-900 border border-amber-300'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    {m.urgency} URGENCY NOTICED
+                  </span>
+                </div>
+              )}
+
+              <p className="whitespace-pre-line text-sm">{m.text}</p>
+
+              {/* Action Suggestions */}
+              {m.suggestedActions && m.suggestedActions.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-stone-200/60 flex flex-wrap gap-1.5">
+                  {m.suggestedActions.map((action, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium bg-white px-2.5 py-1 rounded-full border border-stone-200 text-stone-700 shadow-2xs"
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                      {action}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Read Aloud Button */}
+              {m.sender === 'iris' && (
+                <button
+                  onClick={() => speakText(m.text, lang)}
+                  className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:text-teal-900 transition"
+                  title="Read Aloud"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  Listen
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-500 max-w-xs animate-pulse">
+            <RefreshCw className="w-4 h-4 animate-spin text-teal-600" />
+            <span>IRIS Care Assistant is evaluating safely...</span>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Sample Quick Questions */}
+      <div className="py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <span className="text-[11px] uppercase font-bold text-stone-400 shrink-0">Try asking:</span>
+        {activePrompts.map((prompt, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleSend(prompt)}
+            className="px-3 py-1.5 rounded-full bg-white border border-stone-200 hover:border-teal-300 hover:bg-teal-50 text-stone-700 hover:text-teal-900 text-xs font-medium shrink-0 transition shadow-2xs"
+          >
+            "{prompt}"
+          </button>
+        ))}
+      </div>
+
+      {/* Voice Status & Error Feedback Banners */}
+      {micError && (
+        <div className="mb-2 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{micError}</span>
+          </div>
+          <button onClick={() => setMicError(null)} className="text-xs font-bold text-rose-600 hover:text-rose-800 px-2 py-0.5">×</button>
+        </div>
+      )}
+
+      {voiceFeedback === 'listening' && (
+        <div className="mb-2 p-2.5 rounded-2xl bg-teal-50 border border-teal-200 text-teal-900 text-xs font-semibold flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-600 animate-ping"></span>
+            <span>{t('listening')}</span>
+          </div>
+          <button onClick={() => toggleListening()} className="text-[11px] underline text-teal-800 font-bold">Stop</button>
+        </div>
+      )}
+
+      {voiceFeedback === 'processing' && (
+        <div className="mb-2 p-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
+          <span>{t('processing')}</span>
+        </div>
+      )}
+
+      {voiceFeedback === 'responding' && (
+        <div className="mb-2 p-2.5 rounded-2xl bg-teal-50 border border-teal-200 text-teal-900 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <Volume2 className="w-4 h-4 text-teal-600 animate-pulse" />
+          <span>{t('irisResponding')}</span>
+        </div>
+      )}
+
+      {/* Input Bar */}
+      <div className="bg-white rounded-3xl p-3 border border-stone-200 shadow-sm shrink-0">
+        <div className="flex items-center gap-2">
+          {/* Voice Input Microphone */}
+          <button
+            onClick={toggleListening}
+            className={`p-3 rounded-2xl transition shadow-xs ${
+              isListening
+                ? 'bg-rose-600 text-white animate-pulse'
+                : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+            }`}
+            title={isListening ? 'Stop listening' : 'Speak using microphone'}
+          >
+            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder={
+              lang === 'te'
+                ? 'మీరు ఎలా అనుభవిస్తున్నారో ఇక్కడ టైప్ చేయండి లేదా మాట్లాడండి...'
+                : lang === 'hi'
+                ? 'आप कैसा महसूस कर रही हैं यहाँ लिखें या बोलें...'
+                : 'Describe symptoms or ask health guidance...'
+            }
+            className="flex-1 text-sm px-3 py-2 border-none focus:outline-none placeholder:text-stone-400 text-charcoal-900"
+          />
+
+          <button
+            onClick={() => handleSend()}
+            disabled={!inputMessage.trim() || loading}
+            className="px-4 py-2.5 rounded-2xl bg-teal-700 hover:bg-teal-800 disabled:opacity-40 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition"
+          >
+            <span>Send</span>
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mandatory Medical Safety Disclaimer */}
+      <div className="pt-2 text-center text-[11px] text-stone-400 flex items-center justify-center gap-1.5 shrink-0">
+        <Info className="w-3.5 h-3.5 text-stone-400" />
+        <span>
+          IRIS provides general health information and is not a substitute for professional medical advice or clinical diagnosis.
+        </span>
+      </div>
+    </div>
+  );
+}
