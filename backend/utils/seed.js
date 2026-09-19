@@ -7,6 +7,7 @@ const User = require('../models/User');
 const Device = require('../models/Device');
 const Consent = require('../models/Consent');
 const FamilyRelationship = require('../models/FamilyRelationship');
+const Organization = require('../models/Organization');
 
 async function seedInitialData() {
   try {
@@ -217,6 +218,77 @@ async function seedInitialData() {
         { seniorId: 'S102', userEmail: 'senior@iris.care', purpose: 'AI_PROCESSING', granted: true, version: '1.0', source: 'onboarding' }
       ]);
       console.log('[IRIS Seed] Seeded HIPAA/DISHA Baseline Consents for S102');
+    }
+
+    // 9. Seed Connect & Contribute Organizations
+    const orgCount = await Organization.countDocuments();
+    if (orgCount === 0) {
+      await Organization.create([
+        {
+          name: 'Sunshine Children\'s Home',
+          category: 'orphanage',
+          description: 'A loving home for children aged 3-16, providing education, care, and a nurturing environment.',
+          image: '👶',
+          location: { address: '12, Banjara Hills Road No. 5', city: 'Hyderabad', lat: 17.4156, lng: 78.4347 },
+          contactPhone: '+91 40 2335 1234',
+          contactEmail: 'info@sunshinechildrenshome.org',
+          activities: [
+            { name: 'Teaching', icon: '📚', description: 'Help children with reading, writing, and basic math.', schedule: 'Mon, Wed, Fri — 10:00 AM to 12:00 PM' },
+            { name: 'Storytelling', icon: '📖', description: 'Share stories and life experiences with the children.', schedule: 'Tue, Thu — 3:00 PM to 4:30 PM' },
+            { name: 'Painting', icon: '🎨', description: 'Art sessions with children — drawing, colouring, and crafts.', schedule: 'Saturday — 10:00 AM to 12:00 PM' },
+            { name: 'Music', icon: '🎵', description: 'Sing songs, teach instruments, or just enjoy music together.', schedule: 'Friday — 4:00 PM to 5:30 PM' },
+            { name: 'Games', icon: '♟️', description: 'Board games, puzzles, and outdoor activities.', schedule: 'Daily — 5:00 PM to 6:00 PM' }
+          ]
+        },
+        {
+          name: 'Hope Children\'s Trust',
+          category: 'orphanage',
+          description: 'Empowering orphaned and underprivileged children through education and skill development.',
+          image: '🌟',
+          location: { address: '45, Jubilee Hills Check Post', city: 'Hyderabad', lat: 17.4310, lng: 78.4070 },
+          contactPhone: '+91 40 2360 5678',
+          contactEmail: 'contact@hopechildrenstrust.org',
+          activities: [
+            { name: 'Mentoring', icon: '👨‍🏫', description: 'Guide older children with career advice and life skills.', schedule: 'Wed, Sat — 11:00 AM to 1:00 PM' },
+            { name: 'Teaching', icon: '📚', description: 'Assist with homework and exam preparation.', schedule: 'Mon to Fri — 4:00 PM to 6:00 PM' },
+            { name: 'Cross Stitch', icon: '🧵', description: 'Teach traditional needlework and embroidery crafts.', schedule: 'Tuesday — 2:00 PM to 4:00 PM' },
+            { name: 'Conversation', icon: '🗣️', description: 'Practise English conversation and communication skills.', schedule: 'Mon, Thu — 10:00 AM to 11:30 AM' }
+          ]
+        },
+        {
+          name: 'Helping Hands NGO',
+          category: 'ngo',
+          description: 'A community service organisation focused on uplifting underprivileged families through education and healthcare.',
+          image: '🤝',
+          location: { address: '78, Ameerpet Main Road', city: 'Hyderabad', lat: 17.4375, lng: 78.4483 },
+          contactPhone: '+91 40 2374 9012',
+          contactEmail: 'helpinghands@ngo.org',
+          activities: [
+            { name: 'Teaching', icon: '📚', description: 'Teach basic literacy and numeracy to community members.', schedule: 'Mon to Sat — 9:00 AM to 11:00 AM' },
+            { name: 'Gardening', icon: '🌱', description: 'Help maintain the community garden and teach organic farming.', schedule: 'Wed, Sat — 7:00 AM to 9:00 AM' },
+            { name: 'Storytelling', icon: '📖', description: 'Share wisdom and cultural stories at community gatherings.', schedule: 'Sunday — 10:00 AM to 12:00 PM' },
+            { name: 'Conversation', icon: '🗣️', description: 'Spend time talking and listening to community elders.', schedule: 'Daily — Flexible hours' },
+            { name: 'Music', icon: '🎵', description: 'Organise music and cultural events for the community.', schedule: 'Saturday — 5:00 PM to 7:00 PM' }
+          ]
+        },
+        {
+          name: 'Grace Old Age Home',
+          category: 'old_age_home',
+          description: 'A peaceful home for senior citizens providing companionship, care, and dignity in their golden years.',
+          image: '👴',
+          location: { address: '23, Begumpet', city: 'Hyderabad', lat: 17.4410, lng: 78.4710 },
+          contactPhone: '+91 40 2776 3456',
+          contactEmail: 'grace@oldagehome.org',
+          activities: [
+            { name: 'Conversation', icon: '🗣️', description: 'Spend quality time chatting with residents.', schedule: 'Daily — 10:00 AM to 12:00 PM' },
+            { name: 'Games', icon: '♟️', description: 'Play chess, carrom, and card games with residents.', schedule: 'Daily — 3:00 PM to 5:00 PM' },
+            { name: 'Music', icon: '🎵', description: 'Sing devotional songs or play instruments for residents.', schedule: 'Wed, Sun — 5:00 PM to 6:30 PM' },
+            { name: 'Gardening', icon: '🌱', description: 'Tend the garden alongside residents who enjoy gardening.', schedule: 'Tue, Fri — 7:00 AM to 8:30 AM' },
+            { name: 'Storytelling', icon: '📖', description: 'Exchange life stories and memories with residents.', schedule: 'Saturday — 4:00 PM to 5:30 PM' }
+          ]
+        }
+      ]);
+      console.log('[IRIS Seed] Seeded Connect & Contribute Sample Organizations');
     }
   } catch (error) {
     console.error('[IRIS Seed] Error seeding database:', error.message);

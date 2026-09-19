@@ -16,7 +16,8 @@ import {
   Check,
   AlertCircle,
   X,
-  Volume2
+  Volume2,
+  HandHeart
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -191,11 +192,10 @@ export default function SeniorDashboardPage() {
           <div className="mt-4 pt-4 border-t border-stone-100 flex items-center justify-between">
             <button
               onClick={() => setMedicineTaken(!medicineTaken)}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
-                medicineTaken
+              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${medicineTaken
                   ? 'bg-emerald-600 text-white'
                   : 'bg-charcoal-900 text-white hover:bg-charcoal-800'
-              }`}
+                }`}
             >
               <Check className="w-4 h-4" />
               {medicineTaken ? 'Marked as Taken ✓' : 'Mark Taken'}
@@ -247,7 +247,7 @@ export default function SeniorDashboardPage() {
         {/* Tile 5: Transport Ride Assistance */}
         <Link
           to="/transport"
-          className="p-6 rounded-3xl bg-white border-2 border-stone-200 shadow-sm hover:border-stone-300 transition flex items-center gap-5 sm:col-span-2 group"
+          className="p-6 rounded-3xl bg-white border-2 border-stone-200 shadow-sm hover:border-stone-300 transition flex items-center gap-5 group"
         >
           <div className="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center shrink-0 text-sky-700 group-hover:scale-105 transition">
             <Car className="w-7 h-7" />
@@ -256,6 +256,22 @@ export default function SeniorDashboardPage() {
             <h3 className="text-lg font-black text-charcoal-950 uppercase">{t('transport')}</h3>
             <p className="text-xs text-stone-500 font-medium mt-0.5">
               Book medical transit with wheelchair assistance for doctor visits or grocery trips.
+            </p>
+          </div>
+        </Link>
+
+        {/* Tile 6: Connect & Contribute */}
+        <Link
+          to="/connect-contribute"
+          className="p-6 rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-md border-2 border-emerald-700 transition flex items-center gap-5 group"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+            <HandHeart className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black uppercase tracking-tight">{t('connectContribute')}</h3>
+            <p className="text-xs text-emerald-100 font-medium mt-0.5">
+              {t('connectContributeDesc')}
             </p>
           </div>
         </Link>

@@ -107,4 +107,12 @@ export const caretakerApi = {
   setAvailability: (id, availability) => api.patch(`/caretakers/${id}/availability`, { availability })
 };
 
+// Connect & Contribute API
+export const connectContributeApi = {
+  getOrganizations: (category) => api.get('/connect-contribute/organizations', { params: category ? { category } : {} }),
+  getOrganization: (id) => api.get(`/connect-contribute/organizations/${id}`),
+  participate: (data) => api.post('/connect-contribute/participate', data),
+  getMyParticipations: () => api.get('/connect-contribute/my-participations'),
+};
+
 export default api;

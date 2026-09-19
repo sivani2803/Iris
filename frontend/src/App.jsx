@@ -17,6 +17,10 @@ import MedicinesPage from './pages/MedicinesPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import TransportPage from './pages/TransportPage';
 import CommunityPage from './pages/CommunityPage';
+import ConnectContributePage from './pages/ConnectContributePage';
+import OrganizationListPage from './pages/OrganizationListPage';
+import OrganizationDetailPage from './pages/OrganizationDetailPage';
+import ActivityDetailPage from './pages/ActivityDetailPage';
 import DemoPage from './pages/DemoPage';
 import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
@@ -56,90 +60,124 @@ export default function App() {
                     <Routes>
                       {/* Public Authentication Routes */}
                       <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-                  {/* Multi-Step Onboarding (Authenticated) */}
-                  <Route
-                    path="/onboarding"
-                    element={
-                      <ProtectedRoute>
-                        <OnboardingPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                      {/* Multi-Step Onboarding (Authenticated) */}
+                      <Route
+                        path="/onboarding"
+                        element={
+                          <ProtectedRoute>
+                            <OnboardingPage />
+                          </ProtectedRoute>
+                        }
+                      />
 
-                  {/* Role-Specific Protected Dashboards */}
-                  <Route
-                    path="/senior"
-                    element={
-                      <ProtectedRoute allowedRoles={['senior', 'admin']}>
-                        <SeniorDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/family"
-                    element={
-                      <ProtectedRoute allowedRoles={['family', 'admin']}>
-                        <FamilyDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/caretaker"
-                    element={
-                      <ProtectedRoute allowedRoles={['caretaker', 'admin']}>
-                        <CaretakerDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/caregiver"
-                    element={
-                      <ProtectedRoute allowedRoles={['caretaker', 'admin']}>
-                        <CaretakerDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/provider"
-                    element={
-                      <ProtectedRoute allowedRoles={['healthcare_provider', 'admin']}>
-                        <HealthcareProviderDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin"
-                    element={
-                      <ProtectedRoute allowedRoles={['admin']}>
-                        <AdminDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                      {/* Role-Specific Protected Dashboards */}
+                      <Route
+                        path="/senior"
+                        element={
+                          <ProtectedRoute allowedRoles={['senior', 'admin']}>
+                            <SeniorDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/family"
+                        element={
+                          <ProtectedRoute allowedRoles={['family', 'admin']}>
+                            <FamilyDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/caretaker"
+                        element={
+                          <ProtectedRoute allowedRoles={['caretaker', 'admin']}>
+                            <CaretakerDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/caregiver"
+                        element={
+                          <ProtectedRoute allowedRoles={['caretaker', 'admin']}>
+                            <CaretakerDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/provider"
+                        element={
+                          <ProtectedRoute allowedRoles={['healthcare_provider', 'admin']}>
+                            <HealthcareProviderDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/admin"
+                        element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <AdminDashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
 
-                  {/* Operational Features */}
-                  <Route path="/simulator" element={<WatchSimulatorPage />} />
-                  <Route path="/ai" element={<AiAssistantPage />} />
-                  <Route path="/medicines" element={<MedicinesPage />} />
-                  <Route path="/appointments" element={<AppointmentsPage />} />
-                  <Route path="/transport" element={<TransportPage />} />
-                  <Route path="/community" element={<CommunityPage />} />
-                  <Route path="/demo" element={<DemoPage />} />
+                      {/* Operational Features */}
+                      <Route path="/simulator" element={<WatchSimulatorPage />} />
+                      <Route path="/ai" element={<AiAssistantPage />} />
+                      <Route path="/medicines" element={<MedicinesPage />} />
+                      <Route path="/appointments" element={<AppointmentsPage />} />
+                      <Route path="/transport" element={<TransportPage />} />
+                      <Route path="/community" element={<CommunityPage />} />
+                      <Route path="/demo" element={<DemoPage />} />
 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </ErrorBoundary>
-            </main>
-          </div>
-        </Router>
-      </EmergencyProvider>
-    </LanguageProvider>
-  </AuthProvider>
-</ErrorBoundary>
+                      {/* Connect & Contribute Feature */}
+                      <Route
+                        path="/connect-contribute"
+                        element={
+                          <ProtectedRoute allowedRoles={['senior', 'admin']}>
+                            <ConnectContributePage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/connect-contribute/:category"
+                        element={
+                          <ProtectedRoute allowedRoles={['senior', 'admin']}>
+                            <OrganizationListPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/connect-contribute/org/:id"
+                        element={
+                          <ProtectedRoute allowedRoles={['senior', 'admin']}>
+                            <OrganizationDetailPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/connect-contribute/org/:id/activity/:activityIndex"
+                        element={
+                          <ProtectedRoute allowedRoles={['senior', 'admin']}>
+                            <ActivityDetailPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Fallback */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </main>
+              </div>
+            </Router>
+          </EmergencyProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

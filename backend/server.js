@@ -17,11 +17,11 @@ const server = http.createServer(app);
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : [
-      process.env.CLIENT_URL || 'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:3000',
-      'http://localhost:5000'
-    ];
+    process.env.CLIENT_URL || 'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://localhost:5000'
+  ];
 
 const isLocalhostOrigin = (origin) => {
   if (!origin) return true;
@@ -92,6 +92,7 @@ app.use('/api/medicines', require('./routes/medicineRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
 app.use('/api/transport', require('./routes/transportRoutes'));
 app.use('/api/family', require('./routes/familyRoutes'));
+app.use('/api/connect-contribute', require('./routes/connectContributeRoutes'));
 
 // Health check route
 app.get('/api/health', (req, res) => {
