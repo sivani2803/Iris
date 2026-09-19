@@ -36,7 +36,30 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: [
+          'Inter',
+          'Noto Sans',
+          'Noto Sans Devanagari',
+          'Noto Sans Telugu',
+          'Noto Sans Tamil',
+          'Noto Sans Kannada',
+          'Noto Sans Malayalam',
+          'Noto Sans Bengali',
+          'Noto Sans Gujarati',
+          'Noto Sans Gurmukhi',
+          'Noto Sans Oriya',
+          'Noto Naskh Arabic',
+          'Noto Sans Meetei Mayek',
+          'Noto Sans Ol Chiki',
+          'Noto Sans SC',
+          'Noto Sans JP',
+          'Noto Sans KR',
+          'Nirmala UI',
+          'Segoe UI',
+          'system-ui',
+          '-apple-system',
+          'sans-serif'
+        ],
         serif: ['Newsreader', 'Georgia', 'serif']
       },
       animation: {

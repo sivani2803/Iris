@@ -357,7 +357,7 @@ export default function FamilyDashboardPage() {
           </div>
           <div className="text-xs text-stone-500 mt-2 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Baseline resting: 72 BPM
+            {seniorProfile?.baselineVitals?.restingHeartRate ? `Baseline resting: ${seniorProfile.baselineVitals.restingHeartRate} BPM` : 'Resting Baseline'}
           </div>
         </div>
 
@@ -403,6 +403,7 @@ export default function FamilyDashboardPage() {
         <CareNetworkGraph
           activeEmergency={activeEmergency}
           seniorName={seniorProfile?.name || 'Senior'}
+          seniorId={seniorProfile?.seniorId}
           caretakerName={activeEmergency?.assignedCaretakerData?.name || 'Assigned Responder'}
         />
       </NodeErrorBoundary>

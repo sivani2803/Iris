@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { IMAGES } from '../assets/images';
-import LanguageSelectorModal from '../components/common/LanguageSelectorModal';
 import {
   Shield,
   ShieldAlert,
@@ -35,9 +34,8 @@ import {
 
 export default function LandingPage() {
   const { user, token, onboardingCompleted } = useAuth();
-  const { t, currentLanguageInfo } = useLanguage();
+  const { t, currentLanguageInfo, isLangModalOpen, openLanguageModal } = useLanguage();
   const navigate = useNavigate();
-  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
 
   // Auto-redirect authenticated & onboarded users to their role-specific dashboard
   useEffect(() => {
@@ -119,7 +117,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="relative overflow-hidden bg-[#fafaf8] text-charcoal-900 selection:bg-teal-100 selection:text-teal-900">
+    <div className="relative overflow-x-hidden bg-[#fafaf8] text-charcoal-900 selection:bg-teal-100 selection:text-teal-900">
       
       {/* ========================================================================= */}
       {/* 1. HERO SECTION & EDITORIAL CENTERPIECE                                  */}
@@ -133,8 +131,8 @@ export default function LandingPage() {
 
         <div className="text-center max-w-3xl mx-auto">
           {/* Subtle Platform Status & Multilingual Selector Trigger */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-teal-950 border border-teal-200/80 shadow-2xs mb-6 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
+          <div className="inline-flex max-w-full flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-2xl sm:rounded-full text-xs font-semibold bg-white text-teal-950 border border-teal-200/80 shadow-2xs mb-6 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600"></span>
             </span>
@@ -142,11 +140,13 @@ export default function LandingPage() {
             <button
               id="hero-language-switcher-btn"
               type="button"
-              onClick={() => setIsLangModalOpen(true)}
-              className="ml-2 pl-2.5 border-l border-stone-200 text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              onClick={openLanguageModal}
+              className="sm:ml-2 sm:pl-2.5 sm:border-l sm:border-stone-200 text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded-lg shrink-0 whitespace-nowrap"
               aria-label="Change interface language"
+              aria-haspopup="dialog"
+              aria-expanded={isLangModalOpen}
             >
-              <Globe className="w-3.5 h-3.5 text-teal-600" />
+              <Globe className="w-3.5 h-3.5 text-teal-600 shrink-0" />
               <span>{currentLanguageInfo?.nativeName || 'English'}</span>
               <span className="text-[10px] text-stone-400 font-normal">({currentLanguageInfo?.code?.toUpperCase() || 'EN'})</span>
             </button>
@@ -748,11 +748,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Language Modal (Preserves complete 32-language selection) */}
-      <LanguageSelectorModal
-        isOpen={isLangModalOpen}
-        onClose={() => setIsLangModalOpen(false)}
-      />
     </div>
   );
 }

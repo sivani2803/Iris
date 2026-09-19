@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { createSpeechRecognizer, isSpeechRecognitionSupported, speakText } from '../services/speech';
 import {
   Mic,
@@ -12,25 +14,70 @@ import {
   ShieldCheck,
   CheckCircle2,
   RefreshCw,
-  Info
+  Info,
+  UserCheck,
+  FlaskConical
 } from 'lucide-react';
 
 export default function AiAssistantPage() {
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isDemoMode, setIsDemoMode] = useState(() => searchParams.get('demo') === 'true');
+
+  const getInitialGreeting = (demoActive = isDemoMode) => {
+    if (user?.name) {
+      if (lang === 'te') return `నమస్కారం ${user.name} గారూ. నేను IRIS కేర్ అసిస్టెంట్‌ని. మీరు ఎలా అనుభవిస్తున్నారో నాకు చెప్పండి, నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను.`;
+      if (lang === 'hi') return `नमस्ते ${user.name} जी। मैं IRIS केयर असिस्टेंट हूँ। कृपया बताएं कि आप कैसा महसूस कर रहे हैं।`;
+      return `Hello ${user.name}. I am your IRIS Care Assistant. Tell me how you are feeling, and I will help guide you safely.`;
+    }
+    if (demoActive) {
+      if (lang === 'te') return `నమస్కారం సావిత్రి దేవి గారూ. మీరు డెమో మోడ్ (S102) లో ఉన్నారు. మీ డెమో అపాయింట్‌మెంట్‌లు, మందులు లేదా లక్షణాల గురించి అడగవచ్చు.`;
+      if (lang === 'hi') return `नमस्ते सावित्री देवी जी। आप डेमो मोड (S102) में हैं। आप अपने डेमो अपॉइंटमेंट, दवाओं या लक्षणों के बारे में पूछ सकते हैं।`;
+      return `Hello Savitri Devi. You are exploring the IRIS Care Assistant in Demo Mode (S102). You can ask about your demo appointments, medicines, vitals, or symptoms.`;
+    }
+    if (lang === 'te') {
+      return `నమస్కారం. నేను IRIS కేర్ అసిస్టెంట్‌ని. మీరు ఎలా అనుభవిస్తున్నారో నాకు చెప్పండి, నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను.`;
+    }
+    if (lang === 'hi') {
+      return `नमस्ते। मैं IRIS केयर असिस्टेंट हूँ। कृपया बताएं कि आप कैसा महसूस कर रहे हैं।`;
+    }
+    return `Hello. I am your IRIS Care Assistant. Tell me how you are feeling, and I will help guide you safely.`;
+  };
+
   const [messages, setMessages] = useState([
     {
       id: '1',
       sender: 'iris',
-      text: lang === 'te'
-        ? 'నమస్కారం సావిత్రి గారూ. నేను IRIS కేర్ అసిస్టెంట్‌ని. మీరు ఎలా అనుభవిస్తున్నారో నాకు చెప్పండి, నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను.'
-        : lang === 'hi'
-        ? 'नमस्ते सावित्री जी। मैं IRIS केयर असिस्टेंट हूँ। कृपया बताएं कि आप कैसा महसूस कर रही हैं।'
-        : 'Hello Savitri. I am your IRIS Care Assistant. Tell me how you are feeling, and I will help guide you safely.',
+      text: getInitialGreeting(searchParams.get('demo') === 'true'),
       urgency: 'LOW',
       suggestedActions: ['Describe any symptom', 'Ask about medicine timing'],
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
+
+  const toggleDemoMode = () => {
+    const nextVal = !isDemoMode;
+    setIsDemoMode(nextVal);
+    const newParams = new URLSearchParams(searchParams);
+    if (nextVal) {
+      newParams.set('demo', 'true');
+    } else {
+      newParams.delete('demo');
+    }
+    setSearchParams(newParams);
+    setMessages([
+      {
+        id: Date.now().toString(),
+        sender: 'iris',
+        text: getInitialGreeting(nextVal),
+        urgency: 'LOW',
+        suggestedActions: nextVal ? ['What is my next appointment?', 'What is my current heart rate?'] : ['Describe any symptom', 'Ask about medicine timing'],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  };
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -46,6 +93,78 @@ export default function AiAssistantPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleActionClick = (action) => {
+    if (!action) return;
+    const lower = action.toLowerCase();
+
+    // Emergency numbers (108 / 112 / ambulance)
+    if (
+      lower.includes('emergency') || 
+      lower.includes('108') || 
+      lower.includes('112') || 
+      lower.includes('urgent') || 
+      lower.includes('అత్యవసర') || 
+      lower.includes('ఆపాతకాలీన')
+    ) {
+      try {
+        window.location.href = 'tel:112';
+      } catch (_) {}
+      return;
+    }
+
+    // Crisis helplines (14416 / 988 / tele-manas)
+    if (
+      lower.includes('helpline') || 
+      lower.includes('14416') || 
+      lower.includes('988') || 
+      lower.includes('tele-manas') || 
+      lower.includes('టెలి-మానస్') || 
+      lower.includes('मानस')
+    ) {
+      try {
+        window.location.href = 'tel:14416';
+      } catch (_) {}
+      return;
+    }
+
+    // Medication management
+    if (
+      lower.includes('medication') || 
+      lower.includes('medicine') || 
+      lower.includes('మందు') || 
+      lower.includes('మాత్ర') || 
+      lower.includes('दवा')
+    ) {
+      navigate('/medicines');
+      return;
+    }
+
+    // Appointments
+    if (
+      lower.includes('appointment') || 
+      lower.includes('అపాయింట్‌మెంట్') || 
+      lower.includes('अपॉइंटमेंट')
+    ) {
+      navigate('/appointments');
+      return;
+    }
+
+    // Care network / Community
+    if (
+      lower.includes('caregiver') || 
+      lower.includes('caretaker') || 
+      lower.includes('కేర్‌టేకర్‌') || 
+      lower.includes('కేర్‌గివర్') || 
+      lower.includes('केयरटेकर')
+    ) {
+      navigate('/community');
+      return;
+    }
+
+    // Otherwise send as interactive prompt inquiry (e.g. "Prepare questions for doctor")
+    handleSend(action);
+  };
 
   const handleSend = async (messageText = inputMessage) => {
     const textToSend = messageText.trim();
@@ -67,16 +186,17 @@ export default function AiAssistantPage() {
       const res = await axios.post('/api/ai/chat', {
         message: textToSend,
         language: lang,
-        seniorId: 'S102'
+        seniorId: isDemoMode ? 'S102' : (user?.seniorId || null),
+        isDemo: Boolean(!user && isDemoMode)
       });
 
       const data = res.data?.data || {};
       const irisMsg = {
         id: (Date.now() + 1).toString(),
         sender: 'iris',
-        text: data.reply || 'I am here with you. Please rest and contact your caretaker if you feel unwell.',
+        text: data.reply || 'I am here with you. Please let me know what you need guidance with.',
         urgency: data.urgency || 'LOW',
-        suggestedActions: data.suggestedActions || [],
+        suggestedActions: Array.isArray(data.suggestedActions) ? data.suggestedActions : [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -92,8 +212,9 @@ export default function AiAssistantPage() {
         {
           id: (Date.now() + 1).toString(),
           sender: 'iris',
-          text: 'Unable to reach cloud AI assistant right now. If this is an emergency, please press the red HELP button on your home screen or contact caretaker Ravi Kumar directly (+91 98123 45678).',
+          text: 'Unable to reach IRIS Care Assistant right now. If this is an emergency, please contact local emergency services (108 / 112) or seek immediate medical care.',
           urgency: 'MODERATE',
+          suggestedActions: ['Call Emergency Services (108 / 112)'],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -156,8 +277,8 @@ export default function AiAssistantPage() {
     en: [
       'My chest feels uncomfortable and tight.',
       'I feel dizzy when I stand up from bed.',
-      'I forgot to take my morning blood pressure pill.',
-      'My right knee feels stiff and swollen.'
+      'I forgot to take my morning medicine.',
+      'What is my next appointment?'
     ],
     te: [
       'నాకు తల తిరుగుతున్నట్టు ఉంది.',
@@ -194,9 +315,39 @@ export default function AiAssistantPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-semibold text-stone-600 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200">
-          <ShieldCheck className="w-4 h-4 text-teal-600" />
-          <span>Non-Diagnostic Triage</span>
+        <div className="flex items-center gap-2">
+          {user ? (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+              <UserCheck className="w-4 h-4 text-emerald-600" />
+              <span>Verified: {user.name}</span>
+            </div>
+          ) : isDemoMode ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                <FlaskConical className="w-4 h-4 text-amber-600" />
+                <span>Demo Mode (S102 - Savitri Devi)</span>
+              </div>
+              <button
+                onClick={toggleDemoMode}
+                className="text-xs text-stone-500 hover:text-stone-800 underline font-medium cursor-pointer"
+              >
+                Exit Demo
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-600 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200">
+                <ShieldCheck className="w-4 h-4 text-teal-600" />
+                <span>Guest Mode</span>
+              </div>
+              <button
+                onClick={toggleDemoMode}
+                className="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg font-medium cursor-pointer transition"
+              >
+                Try Demo Mode (S102)
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -208,7 +359,7 @@ export default function AiAssistantPage() {
             className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'} animate-in fade-in`}
           >
             <div className="flex items-center gap-2 mb-1 text-[11px] text-stone-400">
-              <span className="font-semibold">{m.sender === 'user' ? 'Savitri Devi' : 'IRIS Assistant'}</span>
+              <span className="font-semibold">{m.sender === 'user' ? (user?.name || 'You') : 'IRIS Assistant'}</span>
               <span>•</span>
               <span className="font-mono">{m.timestamp}</span>
             </div>
@@ -238,17 +389,18 @@ export default function AiAssistantPage() {
 
               <p className="whitespace-pre-line text-sm">{m.text}</p>
 
-              {/* Action Suggestions */}
+              {/* Contextual Action Suggestions */}
               {m.suggestedActions && m.suggestedActions.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-stone-200/60 flex flex-wrap gap-1.5">
                   {m.suggestedActions.map((action, i) => (
-                    <span
+                    <button
                       key={i}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium bg-white px-2.5 py-1 rounded-full border border-stone-200 text-stone-700 shadow-2xs"
+                      onClick={() => handleActionClick(action)}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium bg-white hover:bg-teal-50 hover:border-teal-300 px-2.5 py-1 rounded-full border border-stone-200 text-stone-700 hover:text-teal-900 transition shadow-2xs cursor-pointer"
                     >
                       <CheckCircle2 className="w-3 h-3 text-teal-600" />
                       {action}
-                    </span>
+                    </button>
                   ))}
                 </div>
               )}

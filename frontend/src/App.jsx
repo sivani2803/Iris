@@ -2,8 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { EmergencyProvider } from './context/EmergencyContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import Navbar from './components/Navbar';
+import LanguageSelectorModal from './components/common/LanguageSelectorModal';
 
 // Existing Pages
 import LandingPage from './pages/LandingPage';
@@ -30,6 +31,16 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
+function LanguageModalHost() {
+  const { isLangModalOpen, closeLanguageModal } = useLanguage();
+  return (
+    <LanguageSelectorModal
+      isOpen={isLangModalOpen}
+      onClose={closeLanguageModal}
+    />
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary name="IRIS Root Application">
@@ -39,6 +50,7 @@ export default function App() {
             <Router>
               <div className="min-h-screen flex flex-col bg-surface-warm text-charcoal-900 font-sans">
                 <Navbar />
+                <LanguageModalHost />
                 <main className="flex-1">
                   <ErrorBoundary name="IRIS Route Host">
                     <Routes>

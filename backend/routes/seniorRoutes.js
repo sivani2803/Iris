@@ -67,12 +67,14 @@ router.get('/me', authenticateToken, async (req, res) => {
 // GET /api/seniors/me/health (Context-aware senior health vitals)
 router.get('/me/health', authenticateToken, async (req, res) => {
   try {
-    const targetSeniorId = req.user.seniorId;
+    const targetSeniorId = req.user?.seniorId;
+    const isDemo = req.user?.email === 'senior@iris.care' || targetSeniorId === 'S102';
+
     if (!targetSeniorId) {
       return res.status(200).json({
         success: true,
         data: {
-          current: { heartRate: 72, spo2: 98, motionState: 'resting', fallDetected: false, timestamp: new Date() },
+          current: null,
           recentHistory: []
         }
       });
@@ -82,13 +84,13 @@ router.get('/me/health', authenticateToken, async (req, res) => {
       .sort({ timestamp: -1 })
       .limit(30);
 
-    const latest = events[0] || {
+    const latest = events[0] || (isDemo ? {
       heartRate: 72,
       spo2: 98,
       motionState: 'active',
       fallDetected: false,
       timestamp: new Date()
-    };
+    } : null);
 
     if (req.user) {
       AuditLog.logEvent({

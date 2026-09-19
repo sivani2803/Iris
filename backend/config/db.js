@@ -1,19 +1,26 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 const mongoose = require('mongoose');
 
 let memoryServer = null;
 
 async function connectDB() {
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/iris';
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/iris';
 
   try {
-    // Attempt connecting to configured MongoDB (timeout 2.5s for fast fallback)
     mongoose.set('strictQuery', false);
+    console.log('[IRIS DB] Connecting to Atlas database...');
+
+    // Standard Atlas connection timeout (15-30s)
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 2500,
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
     });
-    console.log(`[IRIS DB] Connected to MongoDB at: ${uri}`);
+
+    console.log(`[IRIS DB] Connected successfully to Atlas at: ${mongoose.connection.host}`);
   } catch (err) {
-    console.warn(`[IRIS DB] Local MongoDB unavailable (${err.message}). Starting in-memory fallback...`);
+    console.warn(`[IRIS DB] MongoDB Atlas unavailable (${err.message}). Starting in-memory fallback...`);
     try {
       const { MongoMemoryServer } = require('mongodb-memory-server');
       memoryServer = await MongoMemoryServer.create();

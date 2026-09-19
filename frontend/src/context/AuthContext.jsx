@@ -134,7 +134,7 @@ export function AuthProvider({ children }) {
         password,
         role,
         phone,
-        seniorId: seniorId || 'S102'
+        seniorId: seniorId || undefined
       });
       const { token: jwtToken, user: userData } = res.data;
       setToken(jwtToken);

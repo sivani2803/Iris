@@ -206,13 +206,19 @@ router.post('/register', authLimiter, async (req, res) => {
     } else if (safeRole === 'family') {
       if (cleanEmail === 'family@iris.care') {
         assignedSeniorId = 'S102'; // Demo account uses S102
-      } else if (seniorId) {
-        assignedSeniorId = seniorId; // Explicitly supplied senior ID
+      } else if (seniorId && seniorId !== 'S102') {
+        assignedSeniorId = seniorId; // Explicitly supplied non-demo senior ID
       } else {
         assignedSeniorId = null; // Unconnected real family member
       }
     } else if (safeRole === 'caretaker') {
-      assignedSeniorId = seniorId || 'S102';
+      if (cleanEmail === 'caretaker@iris.care') {
+        assignedSeniorId = 'S102'; // Demo caretaker uses S102
+      } else if (seniorId && seniorId !== 'S102') {
+        assignedSeniorId = seniorId;
+      } else {
+        assignedSeniorId = null; // Unassigned real caretaker
+      }
     } else {
       assignedSeniorId = null;
     }

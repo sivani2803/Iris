@@ -18,6 +18,10 @@ export function LanguageProvider({ children }) {
   const [lang, setLang] = useState(() => {
     return localStorage.getItem('iris_lang') || 'en';
   });
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
+
+  const openLanguageModal = () => setIsLangModalOpen(true);
+  const closeLanguageModal = () => setIsLangModalOpen(false);
 
   const isRtl = isRtlLanguage(lang);
 
@@ -38,7 +42,7 @@ export function LanguageProvider({ children }) {
       localStorage.setItem('iris_lang', newLang);
 
       // Persist to user profile if authenticated
-      const token = localStorage.getItem('iris_token');
+      const token = localStorage.getItem('iris_jwt_token');
       if (token) {
         try {
           await axios.patch('/api/auth/profile/language', { preferredLanguage: newLang }, {
@@ -62,7 +66,10 @@ export function LanguageProvider({ children }) {
       currentLanguageInfo,
       languages: LANGUAGES,
       changeLanguage,
-      t
+      t,
+      isLangModalOpen,
+      openLanguageModal,
+      closeLanguageModal
     }}>
       {children}
     </LanguageContext.Provider>

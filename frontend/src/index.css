@@ -3,10 +3,30 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-feature-settings: normal;
+    font-kerning: auto;
+    font-variant-ligatures: common-ligatures contextual;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
   body {
     background-color: #fafaf8;
     color: #0f172a;
+  }
+
+  /* Latin-only Inter character variants — strictly scoped to Latin languages */
+  html:is([lang="en"], [lang="fr"], [lang="de"], [lang="es"], [lang="pt"], [lang="it"]) {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Strictly preserve standard OpenType shaping for Indic, RTL, and Asian scripts */
+  [lang]:not([lang="en"]):not([lang="fr"]):not([lang="de"]):not([lang="es"]):not([lang="pt"]):not([lang="it"]),
+  [dir="rtl"],
+  .indic-text {
+    font-feature-settings: normal !important;
+    font-variant-ligatures: normal !important;
   }
 }
 

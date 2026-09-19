@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Pill, Check, X, Plus, Clock, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { medicineApi } from '../services/api';
 
 export default function MedicinesPage() {
+  const { user } = useAuth();
   const [data, setData] = useState({ medicines: [], adherenceRate: 100, takenCount: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -10,8 +13,13 @@ export default function MedicinesPage() {
 
   const fetchMedicines = async () => {
     try {
-      const res = await axios.get('/api/medicines/S102');
-      setData(res.data.data);
+      if (user) {
+        const res = await medicineApi.getMyMedicines();
+        setData(res.data.data || { medicines: [], adherenceRate: 100, takenCount: 0, total: 0 });
+      } else {
+        const res = await axios.get('/api/medicines/S102');
+        setData(res.data.data || { medicines: [], adherenceRate: 100, takenCount: 0, total: 0 });
+      }
     } catch (err) {
       console.error('Failed to load medicines:', err);
     } finally {
@@ -21,11 +29,11 @@ export default function MedicinesPage() {
 
   useEffect(() => {
     fetchMedicines();
-  }, []);
+  }, [user]);
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.patch(`/api/medicines/${id}/status`, { status });
+      await medicineApi.updateStatus(id, status);
       fetchMedicines();
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -35,8 +43,8 @@ export default function MedicinesPage() {
   const handleAddMedicine = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/medicines', {
-        seniorId: 'S102',
+      await medicineApi.addMedicine({
+        seniorId: user?.seniorId || 'S102',
         ...newMed
       });
       setModalOpen(false);
@@ -59,7 +67,9 @@ export default function MedicinesPage() {
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
-            Tracking daily prescriptions for Savitri Devi (S102) with family adherence visibility.
+            {user?.name
+              ? `Tracking daily prescriptions for ${user.name} with family adherence visibility.`
+              : 'Tracking daily prescriptions for Savitri Devi (Demo S102) with family adherence visibility.'}
           </p>
         </div>
 

@@ -1,7 +1,13 @@
 import React from 'react';
 import { Shield, HeartHandshake, Users, Hospital, Compass, AlertCircle } from 'lucide-react';
 
-export default function CareNetworkGraph({ activeEmergency, seniorName, caretakerName = 'Assigned Responder' }) {
+export default function CareNetworkGraph({
+  activeEmergency,
+  seniorName = 'Savitri Devi',
+  seniorId = 'S102',
+  caretakerName = 'Assigned Responder',
+  familyName = 'Family Network'
+}) {
   const isEmergency = Boolean(activeEmergency);
 
   return (
@@ -87,8 +93,8 @@ export default function CareNetworkGraph({ activeEmergency, seniorName, caretake
               : 'border-teal-600 ring-4 ring-teal-50'
           }`}>
             <span className="text-2xl">👵</span>
-            <span className="text-[11px] font-bold text-charcoal-900 leading-tight">Savitri Devi</span>
-            <span className="text-[9px] text-stone-500 font-mono">S102</span>
+            <span className="text-[11px] font-bold text-charcoal-900 leading-tight px-1 truncate max-w-[85px]">{seniorName}</span>
+            {seniorId && <span className="text-[9px] text-stone-500 font-mono">{seniorId}</span>}
           </div>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
             isEmergency ? 'bg-rose-600 text-white animate-pulse' : 'bg-teal-100 text-teal-800'
@@ -103,7 +109,7 @@ export default function CareNetworkGraph({ activeEmergency, seniorName, caretake
             <Users className="w-6 h-6" />
           </div>
           <span className="text-xs font-bold text-charcoal-900 mt-1">Family</span>
-          <span className="text-[10px] text-stone-500">Rohan & Ananya</span>
+          <span className="text-[10px] text-stone-500 truncate max-w-[100px]">{familyName}</span>
         </div>
 
         {/* Node 2: Caretaker (Top Right) */}

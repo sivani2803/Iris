@@ -168,7 +168,7 @@ router.get('/activities', (req, res) => {
       time: '06:00 PM',
       location: 'Online / Iris Audio Room',
       category: 'Culture & Mentoring',
-      coordinator: 'Savitri Devi & Friends',
+      coordinator: 'Community Cultural Group',
       participantsCount: 14,
       status: 'upcoming'
     }

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Calendar, Clock, MapPin, User, Plus, Bell, RefreshCw, CheckCircle2, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { appointmentApi } from '../services/api';
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -18,8 +21,13 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
-      const res = await axios.get('/api/appointments/S102');
-      setAppointments(res.data.data);
+      if (user) {
+        const res = await appointmentApi.getMyAppointments();
+        setAppointments(res.data.data || []);
+      } else {
+        const res = await axios.get('/api/appointments/S102');
+        setAppointments(res.data.data || []);
+      }
     } catch (err) {
       console.error('Failed to load appointments:', err);
     } finally {
@@ -29,13 +37,13 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, [user]);
 
   const handleCreateAppointment = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/appointments', {
-        seniorId: 'S102',
+      await appointmentApi.addAppointment({
+        seniorId: user?.seniorId || 'S102',
         ...newAppt
       });
       setModalOpen(false);
@@ -72,7 +80,9 @@ export default function AppointmentsPage() {
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
-            Coordinated clinical visits and specialist consultations for Savitri Devi (S102).
+            {user?.name
+              ? `Coordinated clinical visits and specialist consultations for ${user.name}.`
+              : 'Coordinated clinical visits and specialist consultations for Savitri Devi (Demo S102).'}
           </p>
         </div>
 

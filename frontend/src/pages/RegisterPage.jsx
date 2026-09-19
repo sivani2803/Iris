@@ -95,8 +95,7 @@ export default function RegisterPage() {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: formData.role,
-        phone: formData.phone.trim(),
-        seniorId: 'S102'
+        phone: formData.phone.trim()
       });
 
       // Successfully registered and logged in -> transition to role-specific onboarding
